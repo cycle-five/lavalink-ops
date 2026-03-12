@@ -1,0 +1,69 @@
+{% if parsed.status == "Error loading track" or parsed.status == "Exception" %}
+<div class="bg-red-900/40 p-4 rounded-md border border-red-500/50 mb-4">
+    <div class="flex items-start tracking-tight">
+        <svg class="h-5 w-5 text-red-400 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <div>
+            <h4 class="text-red-300 font-semibold">{{ parsed.status }}</h4>
+            <p class="text-red-200 text-sm mt-1 whitespace-pre-wrap">{{ parsed.message }}</p>
+        </div>
+    </div>
+</div>
+{% elif parsed.status == "No matches found." %}
+<div class="bg-yellow-900/40 p-4 rounded-md border border-yellow-500/50 mb-4">
+    <div class="flex items-start">
+        <h4 class="text-yellow-300 font-semibold text-sm">{{ parsed.status }}</h4>
+    </div>
+</div>
+{% else %}
+<div class="bg-green-900/40 p-4 rounded-md border border-green-500/50 mb-4">
+    <div class="flex items-start mb-3">
+        <svg class="h-5 w-5 text-green-400 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <h4 class="text-green-300 font-semibold">{{ parsed.status }}</h4>
+    </div>
+    
+    <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2 text-sm">
+        <div class="sm:col-span-1">
+            <dt class="text-gray-400">Title</dt>
+            <dd class="text-gray-100 font-medium">{{ parsed.title|default(parsed.first_match|default('N/A')) }}</dd>
+        </div>
+        <div class="sm:col-span-1">
+            <dt class="text-gray-400">Author</dt>
+            <dd class="text-gray-100">{{ parsed.author|default('N/A') }}</dd>
+        </div>
+        <div class="sm:col-span-1">
+            <dt class="text-gray-400">Track Count / Duration</dt>
+            <dd class="text-gray-100">
+                {% if parsed.track_count %}
+                    {{ parsed.track_count }} Tracks
+                {% elif parsed.duration %}
+                    {{ (parsed.duration / 1000)|round|int }} seconds
+                {% else %}
+                    N/A
+                {% endif %}
+            </dd>
+        </div>
+        <div class="sm:col-span-1">
+            <dt class="text-gray-400">Source Plugin</dt>
+            <dd class="text-gray-100">
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-800 text-gray-300 border border-gray-600">
+                    {{ parsed.source|default('N/A') }}
+                </span>
+            </dd>
+        </div>
+    </dl>
+</div>
+{% endif %}
+
+<details class="text-gray-400 group">
+    <summary class="cursor-pointer text-sm font-medium hover:text-gray-300 select-none pb-2 border-b border-gray-700 flex justify-between">
+        Raw JSON Response
+        <span class="text-xs">▾</span>
+    </summary>
+    <div class="mt-4 break-all">
+        <textarea readonly rows="8" class="w-full text-xs font-mono bg-black text-gray-400 p-3 rounded border border-gray-800 focus:outline-none focus:border-gray-600">{{ raw }}</textarea>
+    </div>
+</details>

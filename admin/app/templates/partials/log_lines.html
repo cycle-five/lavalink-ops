@@ -1,0 +1,21 @@
+{% for line in logs|default([]) %}
+    {% set lower = line.lower() %}
+    {% set is_err = ('error' in lower or 'exception' in lower) %}
+    {% set is_warn = ('warn' in lower) %}
+    {% set is_yt = ('youtube' in lower) %}
+    {% set is_auth = ('oauth' in lower or 'device' in lower or 'token' in lower) %}
+    
+    {% if is_err %}
+        <div class="text-red-400 break-words">{{ line }}</div>
+    {% elif is_warn %}
+        <div class="text-yellow-400 break-words">{{ line }}</div>
+    {% elif is_yt %}
+        <div class="text-blue-300 break-words">{{ line }}</div>
+    {% elif is_auth %}
+        <div class="text-green-300 break-words">{{ line }}</div>
+    {% else %}
+        <div class="text-gray-300 break-words">{{ line }}</div>
+    {% endif %}
+{% else %}
+    <div class="text-gray-500 italic">Connected to stream. Waiting for logs...</div>
+{% endfor %}

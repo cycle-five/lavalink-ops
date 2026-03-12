@@ -1,0 +1,112 @@
+{% if error %}
+<div class="bg-red-900/50 border border-red-500 rounded p-4 mb-6">
+    <div class="flex">
+        <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+            </svg>
+        </div>
+        <div class="ml-3">
+            <h3 class="text-sm font-medium text-red-200">Connection Error</h3>
+            <div class="mt-2 text-sm text-red-300">
+                <p>{{ error }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <!-- Players -->
+    <div class="bg-gray-800 overflow-hidden shadow rounded-lg border border-gray-700">
+        <div class="px-4 py-5 sm:p-6">
+            <dt class="text-sm font-medium text-gray-400 truncate">Players (Active/Total)</dt>
+            <dd class="mt-1 text-3xl font-semibold text-white">
+                {{ stats.get('playingPlayers', 0) }} <span class="text-gray-500 text-xl">/ {{ stats.get('players', 0) }}</span>
+            </dd>
+        </div>
+    </div>
+
+    <!-- Uptime -->
+    <div class="bg-gray-800 overflow-hidden shadow rounded-lg border border-gray-700">
+        <div class="px-4 py-5 sm:p-6">
+            <dt class="text-sm font-medium text-gray-400 truncate">Uptime</dt>
+            <dd class="mt-1 text-3xl font-semibold text-white">
+                {% set uptime_s = stats.get('uptime', 0) // 1000 %}
+                {% set h = uptime_s // 3600 %}
+                {% set m = (uptime_s % 3600) // 60 %}
+                {{ h }}h {{ m }}m
+            </dd>
+        </div>
+    </div>
+
+    <!-- CPU Load -->
+    <div class="bg-gray-800 overflow-hidden shadow rounded-lg border border-gray-700">
+        <div class="px-4 py-5 sm:p-6">
+            <dt class="text-sm font-medium text-gray-400 truncate">CPU Load (Lavalink / System)</dt>
+            <dd class="mt-1 text-3xl font-semibold text-white flex items-end">
+                {% set l_cpu = (stats.get('cpu', {}).get('lavalinkLoad', 0) * 100)|round(1) %}
+                {% set s_cpu = (stats.get('cpu', {}).get('systemLoad', 0) * 100)|round(1) %}
+                <span class="{{ 'text-red-400' if l_cpu > 80 else ('text-yellow-400' if l_cpu > 50 else 'text-white') }}">
+                    {{ l_cpu }}%
+                </span>
+                <span class="text-gray-500 text-xl ml-2">/ {{ s_cpu }}%</span>
+            </dd>
+        </div>
+    </div>
+
+    <!-- Memory -->
+    <div class="bg-gray-800 overflow-hidden shadow rounded-lg border border-gray-700">
+        <div class="px-4 py-5 sm:p-6">
+            <dt class="text-sm font-medium text-gray-400 truncate">Memory (Used / Alloc)</dt>
+            <dd class="mt-1 text-3xl font-semibold text-white flex items-end">
+                {% set mem = stats.get('memory', {}) %}
+                {% set used_mb = (mem.get('used', 0) / 1048576)|round|int %}
+                {% set alloc_mb = (mem.get('allocated', 0) / 1048576)|round|int %}
+                
+                {{ used_mb }}MB
+                <span class="text-gray-500 text-xl ml-2 text-sm">/ {{ alloc_mb }}MB</span>
+            </dd>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Node Info -->
+    <div class="bg-gray-800 shadow rounded-lg border border-gray-700 p-6">
+        <h3 class="text-lg leading-6 font-medium text-white mb-4">Node Information</h3>
+        
+        <dl class="divide-y divide-gray-700">
+            <div class="py-3 flex justify-between">
+                <dt class="text-sm font-medium text-gray-400">Version</dt>
+                <dd class="text-sm text-white">{{ info.get('version', {}).get('semver', 'Unknown') }}</dd>
+            </div>
+            <div class="py-3 flex justify-between">
+                <dt class="text-sm font-medium text-gray-400">JVM</dt>
+                <dd class="text-sm text-white">{{ info.get('jvm', 'Unknown') }}</dd>
+            </div>
+            <div class="py-3 flex justify-between">
+                <dt class="text-sm font-medium text-gray-400">Lavaplayer</dt>
+                <dd class="text-sm text-white">{{ info.get('lavaplayer', 'Unknown') }}</dd>
+            </div>
+        </dl>
+    </div>
+
+    <!-- Plugins -->
+    <div class="bg-gray-800 shadow rounded-lg border border-gray-700 p-6">
+        <h3 class="text-lg leading-6 font-medium text-white mb-4">Loaded Plugins</h3>
+        
+        {% if info.get('plugins') %}
+            <ul class="divide-y divide-gray-700">
+            {% for plugin in info.get('plugins', []) %}
+                <li class="py-3 flex justify-between">
+                    <span class="text-sm font-medium text-white">{{ plugin.get('name') }}</span>
+                    <span class="text-sm text-gray-400">{{ plugin.get('version') }}</span>
+                </li>
+            {% endfor %}
+            </ul>
+        {% else %}
+            <p class="text-gray-500 text-sm italic">No plugins loaded or unable to fetch.</p>
+        {% endif %}
+    </div>
+</div>

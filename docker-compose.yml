@@ -1,0 +1,105 @@
+services:
+  lavalink:
+    image: ghcr.io/lavalink-devs/lavalink:4
+    container_name: ${LAVALINK_CONTAINER_NAME:-lavalink}
+    restart: unless-stopped
+    environment:
+      - _JAVA_OPTIONS=${LAVALINK_JAVA_OPTS:--Xmx512M}
+      - SERVER_PORT=${LAVALINK_PORT:-2333}
+      - LAVALINK_SERVER_PASSWORD=${LAVALINK_PASSWORD:-youshallnotpass}
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+      - 192.168.1.1
+      - 100.100.100.100
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=1
+      - net.ipv6.conf.default.disable_ipv6=1
+    volumes:
+      - ./config/application.yml:/opt/Lavalink/application.yml:ro
+      - ./data/lavalink/plugins:/opt/Lavalink/plugins
+      - ./data/lavalink/logs:/opt/Lavalink/logs
+    networks:
+      - lavalink
+    ports:
+      - "${LAVALINK_PORT:-2333}:${LAVALINK_PORT:-2333}"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${LAVALINK_PORT:-2333}/version || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    depends_on:
+      yt-cipher:
+        condition: service_started
+
+  yt-cipher:
+    image: ghcr.io/kikkia/yt-cipher:master
+    container_name: yt-cipher
+    restart: unless-stopped
+    environment:
+      - API_TOKEN=${CIPHER_API_TOKEN:-change-me-cipher-token}
+    networks:
+      - lavalink
+    ports:
+      - "127.0.0.1:8001:8001"  # localhost only — no reason to expose externally
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8001/ || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+
+  bgutil-pot:
+    image: jim60105/bgutil-pot
+    container_name: bgutil-pot
+    restart: unless-stopped
+    command: ["server", "--host", "0.0.0.0", "--port", "4416"]
+    networks:
+      - lavalink
+    ports:
+      - "127.0.0.1:4416:4416"  # localhost only
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4416/health || exit 1"]
+      interval: 60s
+      timeout: 15s
+      retries: 3
+
+  admin:
+    build:
+      context: ./admin
+      dockerfile: Dockerfile
+      network: host
+    container_name: lavalink-admin
+    restart: unless-stopped
+    environment:
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-change-me-admin}
+      - ADMIN_SECRET_KEY=${ADMIN_SECRET_KEY:-generate-a-secret-key}
+      - ADMIN_PORT=${ADMIN_PORT:-8080}
+      - LAVALINK_HOST=lavalink
+      - LAVALINK_PORT=${LAVALINK_PORT:-2333}
+      - LAVALINK_PASSWORD=${LAVALINK_PASSWORD:-youshallnotpass}
+      - CIPHER_HOST=yt-cipher
+      - CIPHER_PORT=8001
+      - BGUTIL_HOST=bgutil-pot
+      - BGUTIL_PORT=4416
+      - POT_REFRESH_ENABLED=${POT_REFRESH_ENABLED:-true}
+      - POT_REFRESH_INTERVAL_HOURS=${POT_REFRESH_INTERVAL_HOURS:-6}
+      - LAVALINK_CONTAINER_NAME=${LAVALINK_CONTAINER_NAME:-lavalink}
+      - CONFIG_PATH=/config/application.yml
+      - STATE_PATH=/state/state.json
+    volumes:
+      - ./config:/config # read-write access to application.yml
+      - ./data/admin:/state # persistent state
+      - /var/run/docker.sock:/var/run/docker.sock:ro # container restart capability
+    networks:
+      - lavalink
+    ports:
+      - "${ADMIN_PORT:-8080}:${ADMIN_PORT:-8080}"
+    depends_on:
+      - lavalink
+      - yt-cipher
+      - bgutil-pot
+
+networks:
+  lavalink:
+    driver: bridge

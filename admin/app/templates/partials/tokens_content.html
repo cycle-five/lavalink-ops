@@ -1,0 +1,100 @@
+<!-- PoToken Section -->
+<div class="bg-gray-800 shadow rounded-lg border border-gray-700 p-6 mb-8">
+    <div class="flex justify-between items-start mb-4">
+        <div>
+            <h3 class="text-lg leading-6 font-medium text-white">PoToken Lifecycle</h3>
+            <p class="text-xs text-gray-400">Current status of Proof-of-Origin bounds.</p>
+        </div>
+        
+        <form hx-post="/tokens/refresh-pot" hx-target="#pot-status">
+            <button class="bg-blue-600 hover:bg-blue-500 text-white font-medium py-1.5 px-3 rounded shadow-sm text-sm flex items-center disabled:opacity-50 htmx-request:opacity-50 htmx-request:cursor-wait">
+                <span class="htmx-indicator hidden mr-2">
+                    <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </span>
+                Generate & Re-Inject
+            </button>
+        </form>
+    </div>
+
+    <dl class="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-6">
+        <div class="bg-gray-900 px-4 py-3 rounded-md border border-gray-700">
+            <dt class="text-xs font-medium text-gray-400">PoToken</dt>
+            <dd class="mt-1 text-sm text-white font-mono break-all">{{ pot_token_preview }}</dd>
+        </div>
+        
+        <div class="bg-gray-900 px-4 py-3 rounded-md border border-gray-700">
+            <dt class="text-xs font-medium text-gray-400">Visitor Data</dt>
+            <dd class="mt-1 text-sm text-white font-mono break-all">{{ pot_visitor_preview }}</dd>
+        </div>
+        
+        <div class="bg-gray-900 px-4 py-3 rounded-md border border-gray-700">
+            <dt class="text-xs font-medium text-gray-400">Last Refreshed</dt>
+            <dd class="mt-1 text-sm text-white">{{ pot_last_refresh }}</dd>
+        </div>
+        
+        <div class="bg-gray-900 px-4 py-3 rounded-md border border-gray-700">
+            <dt class="text-xs font-medium text-gray-400">Auto-Refresh</dt>
+            <dd class="mt-1 text-sm font-medium {{ 'text-green-400' if pot_auto_refresh else 'text-gray-400' }}">
+                {{ 'Enabled' if pot_auto_refresh else 'Disabled' }} (every {{ pot_interval }}h)
+            </dd>
+        </div>
+    </dl>
+    
+    <div class="mt-4">
+        <h4 class="text-sm font-medium text-gray-300 mb-2 border-b border-gray-700 pb-1">Refresh History</h4>
+        <ul class="text-xs divide-y divide-gray-700">
+            {% for event in pot_history|reverse %}
+            <li class="py-2 flex justify-between">
+                <span class="text-gray-400">{{ event.timestamp }}</span>
+                <span class="{{ 'text-green-400' if event.status == 'success' else 'text-red-400' }}">{{ event.message }}</span>
+            </li>
+            {% else %}
+            <li class="py-2 text-gray-500 italic">No history available.</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+
+<!-- OAuth Section -->
+<div class="bg-gray-800 shadow rounded-lg border border-gray-700 p-6">
+    <div class="flex justify-between items-start mb-4">
+        <div>
+            <h3 class="text-lg leading-6 font-medium text-white">OAuth Integration</h3>
+            <p class="text-xs text-gray-400">Status of Google account bounds.</p>
+        </div>
+        <span class="px-2 py-1 text-xs rounded-full font-medium 
+                     {{ 'bg-green-900 text-green-200 border border-green-700' if oauth_status == 'Active' else 
+                        ('bg-yellow-900 text-yellow-200 border border-yellow-700' if oauth_status == 'Needs Setup' else 'bg-gray-700 text-gray-300 border border-gray-600') }}">
+            {{ oauth_status }}
+        </span>
+    </div>
+
+    {% if oauth_device_code %}
+    <!-- Active OAuth Prompt -->
+    <div class="bg-blue-900/40 border border-blue-500/50 rounded-lg p-5 mb-4 text-center shadow-inner">
+        <h4 class="text-blue-200 font-medium mb-2">OAuth Setup Required</h4>
+        <p class="text-blue-100/80 text-sm mb-4">Lavalink is waiting for you to authorize this device.</p>
+        
+        <div class="bg-gray-900 font-mono text-2xl text-white py-3 px-6 rounded inline-block tracking-widest border border-gray-700 shadow shadow-black mb-4">
+            {{ oauth_device_code }}
+        </div>
+        
+        <div class="flex justify-center space-x-4">
+            <a href="https://www.google.com/device" target="_blank" class="bg-blue-600 hover:bg-blue-500 text-white font-medium py-2 px-6 rounded shadow transition ease-in-out duration-150">
+                Go to google.com/device
+            </a>
+            
+            <button class="bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded shadow text-sm font-medium border border-gray-600 transition"
+                    x-data="{ code: '{{ oauth_device_code }}' }"
+                    @click="navigator.clipboard.writeText(code); $dispatch('notify', { msg: 'Copied code to clipboard!' })">
+                Copy Code
+            </button>
+        </div>
+    </div>
+    {% else %}
+    <p class="text-sm text-gray-400">No pending OAuth setups currently tracked in the active log tails.</p>
+    {% endif %}
+</div>

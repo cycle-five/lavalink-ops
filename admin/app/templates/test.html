@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Track Tester - Lavalink Ops{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-3xl font-bold text-white">Track Tester</h1>
+    <p class="text-gray-400 mt-1">Test the Lavalink node's ability to resolve youtube endpoints.</p>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    
+    <!-- Test Input -->
+    <div class="bg-gray-800 shadow rounded-lg border border-gray-700 p-6">
+        <h3 class="text-lg leading-6 font-medium text-white mb-4">Input Identifier</h3>
+        <p class="text-sm text-gray-400 mb-6">Enter a track URI, ID, or search query exactly as your bot would.</p>
+        
+        <form hx-post="/test/resolve" hx-target="#test-result" hx-indicator="#loading-indicator">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300">Identifier</label>
+                    <input type="text" name="identifier" required
+                           class="mt-1 block w-full bg-gray-900 border border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-lavalink placeholder-gray-600"
+                           placeholder="ytsearch:never gonna give you up">
+                </div>
+            </div>
+            
+            <div class="mt-6 flex items-center justify-between">
+                <button type="submit" class="bg-lavalink hover:bg-red-500 text-white font-medium py-2 px-6 rounded shadow-sm text-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-lavalink">
+                    Resolve Track
+                </button>
+                
+                <div id="loading-indicator" class="htmx-indicator flex items-center text-gray-400 text-sm">
+                    <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-lavalink" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Resolving internally...
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Result Target -->
+    <div class="bg-[#1e1e1e] shadow rounded-lg border border-gray-700 p-6 flex flex-col h-full overflow-hidden">
+        <h3 class="text-lg leading-6 font-medium text-white mb-4">Response</h3>
+        
+        <div id="test-result" class="flex-grow overflow-auto">
+            <div class="flex items-center justify-center h-full">
+                <p class="text-gray-500 italic text-sm">Submit a query to see the resulting track data.</p>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}Configuration - Lavalink Ops{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex justify-between items-center">
+    <div>
+        <h1 class="text-3xl font-bold text-white">Configuration</h1>
+        <p class="text-gray-400 mt-1">Manage Lavalink's <code class="bg-gray-800 px-1 rounded text-gray-300">application.yml</code> structure.</p>
+    </div>
+    
+    <!-- Restart button, visible after save usually, but can be always available -->
+    <div id="restart-container">
+        <form hx-post="/config/restart" hx-target="#config-status">
+            <button class="bg-yellow-600 hover:bg-yellow-500 text-white font-medium py-2 px-4 rounded shadow-sm flex items-center gap-2">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Restart Node
+            </button>
+        </form>
+    </div>
+</div>
+
+<div id="config-status" class="mb-4"></div>
+
+<div x-data="{ tab: 'form' }" class="bg-gray-800 shadow rounded-lg border border-gray-700 mt-4 overflow-hidden">
+    <!-- Tabs -->
+    <div class="border-b border-gray-700">
+        <nav class="flex -mb-px px-4 gap-4" aria-label="Tabs">
+            <button @click="tab = 'form'" 
+                    :class="tab === 'form' ? 'border-lavalink text-lavalink' : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300'"
+                    class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                Form Editor
+            </button>
+            <button @click="tab = 'raw'" 
+                    :class="tab === 'raw' ? 'border-lavalink text-lavalink' : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300'"
+                    class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                Raw YAML
+            </button>
+        </nav>
+    </div>
+
+    <!-- Form Tab -->
+    <div x-show="tab === 'form'" class="p-6">
+        <form hx-post="/config/save-form" hx-target="#config-status" class="space-y-6">
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- General Section -->
+                <div>
+                    <h3 class="text-lg font-medium leading-6 text-white mb-4">Lavalink Settings</h3>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300">Server Password</label>
+                            <input type="text" name="password" value="{{ password }}" 
+                                   class="mt-1 block w-full bg-gray-900 border border-gray-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-lavalink">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- YouTube Clients Section -->
+                <div>
+                    <h3 class="text-lg font-medium leading-6 text-white mb-4">YouTube Clients Array</h3>
+                    <p class="text-xs text-gray-400 mb-2">Select clients to enable in the source manager.</p>
+                    
+                    <div class="space-y-2 bg-gray-900 p-4 border border-gray-700 rounded-md">
+                        <!-- Normally draggable/reorderable, using simple checkboxes for the prompt -->
+                        {% for c in ["MUSIC", "WEB", "WEBEMBEDDED", "TVHTML5EMBEDDED", "ANDROID", "ANDROID_VR", "IOS"] %}
+                        <div class="flex items-center">
+                            <input type="checkbox" name="clients" value="{{ c }}" 
+                                   {% if c in clients %}checked{% endif %}
+                                   class="h-4 w-4 text-lavalink focus:ring-lavalink border-gray-600 rounded bg-gray-800">
+                            <label class="ml-2 block text-sm text-gray-300">{{ c }}</label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <hr class="border-gray-700">
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- OAuth Section -->
+                <div>
+                    <h3 class="text-lg font-medium leading-6 text-white mb-4">YouTube OAuth</h3>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-center">
+                            <input type="checkbox" name="oauth_enabled" value="true" id="oauth_enabled"
+                                   {% if oauth_enabled %}checked{% endif %}
+                                   class="h-4 w-4 text-lavalink focus:ring-lavalink border-gray-600 rounded bg-gray-800">
+                            <label for="oauth_enabled" class="ml-2 block text-sm text-gray-300">Enable OAuth</label>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300">Refresh Token</label>
+                            <input type="text" name="oauth_refresh" value="{{ oauth_refresh }}" 
+                                   class="mt-1 block w-full bg-gray-900 border border-gray-600 rounded-md py-2 px-3 text-white font-mono text-xs focus:outline-none focus:ring-1 focus:ring-lavalink"
+                                   placeholder="1//...">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PoToken Section (Values overrides) -->
+                <div>
+                    <h3 class="text-lg font-medium leading-6 text-white mb-4">YouTube PoToken</h3>
+                    <p class="text-xs text-gray-400 mb-2">Note: To automatically generate, use the <a href="/tokens" class="text-lavalink underline">Tokens panel</a>.</p>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300">PoToken</label>
+                            <input type="text" name="pot_token" value="{{ pot_token }}" 
+                                   class="mt-1 block w-full bg-gray-900 border border-gray-600 rounded-md py-2 px-3 text-white font-mono text-xs focus:outline-none focus:ring-1 focus:ring-lavalink">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300">Visitor Data</label>
+                            <input type="text" name="pot_visitor" value="{{ pot_visitor }}" 
+                                   class="mt-1 block w-full bg-gray-900 border border-gray-600 rounded-md py-2 px-3 text-white font-mono text-xs focus:outline-none focus:ring-1 focus:ring-lavalink">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end pt-4 border-t border-gray-700">
+                <button type="submit" class="bg-[#F54E4E] hover:bg-red-500 text-white font-medium py-2 px-4 rounded shadow-sm flex items-center">
+                    Save Configuration
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Raw YAML Tab -->
+    <div x-show="tab === 'raw'" class="p-6" x-cloak>
+        <form hx-post="/config/save-raw" hx-target="#config-status" class="space-y-4">
+            <p class="text-sm text-gray-400 mb-4">Edit the raw <code class="text-gray-300">application.yml</code>. Invalid YAML will be rejected.</p>
+            
+            <textarea name="raw_yaml" rows="25"
+                      class="block w-full bg-[#1e1e1e] border border-gray-600 rounded-md py-2 px-3 text-gray-300 font-mono text-sm focus:outline-none focus:ring-1 focus:ring-lavalink whitespace-pre font-normal p-4"
+                      spellcheck="false">{{ raw_yaml }}</textarea>
+            
+            <div class="flex justify-end pt-4">
+                <button type="submit" class="bg-[#F54E4E] hover:bg-red-500 text-white font-medium py-2 px-4 rounded shadow-sm">
+                    Save Raw YAML
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,94 @@
+server:
+  port: 2333
+  address: 0.0.0.0
+  http2:
+    enabled: false
+
+lavalink:
+  plugins:
+    - dependency: "dev.lavalink.youtube:youtube-plugin:1.16.0"
+      repository: "https://maven.lavalink.dev/releases"
+  server:
+    password: "youshallnotpass"
+    sources:
+      youtube: false  # Disabled — using youtube-plugin instead
+      bandcamp: true
+      soundcloud: true
+      twitch: true
+      vimeo: true
+      http: true
+      local: false
+    filters:
+      volume: true
+      equalizer: true
+      karaoke: true
+      timescale: true
+      tremolo: true
+      vibrato: true
+      distortion: true
+      rotation: true
+      channelMix: true
+      lowPass: true
+    bufferDurationMs: 400
+    youtubePlaylistLoadLimit: 6
+    playerUpdateInterval: 5
+    youtubeSearchEnabled: true
+    soundcloudSearchEnabled: true
+    gc-warnings: true
+
+plugins:
+  youtube:
+    enabled: true
+    allowSearch: true
+    allowDirectVideoIds: true
+    allowDirectPlaylistIds: true
+
+    # Client priority — queried in order. Adjust based on what's working.
+    # See: https://github.com/lavalink-devs/youtube-source#available-clients
+    clients:
+      - MUSIC
+      - WEB
+      - TVHTML5EMBEDDED
+      - ANDROID_VR
+
+    # OAuth — authenticate as a real user (use a BURNER account!)
+    # On first start with enabled: true and no refreshToken, Lavalink will log
+    # a device code. Go to https://www.google.com/device and enter it.
+    # After auth, Lavalink logs the refresh token — paste it below and set
+    # skipInitialization: true
+    oauth:
+      enabled: true
+      skipInitialization: false
+      # refreshToken: "paste-your-refresh-token-here"
+
+    # PoToken — proof-of-origin token to bypass bot detection
+    # These values are injected by the admin panel's PoToken manager.
+    # You can also generate them manually with BgUtils.
+    pot:
+      token: ""
+      visitorData: ""
+
+    # Remote cipher server — offloads signature deciphering to yt-cipher
+    remoteCipher:
+      url: "http://yt-cipher:8001"
+      password: "change-me-cipher-token"
+      userAgent: "lavalink-ops"
+
+logging:
+  file:
+    path: ./logs/
+  level:
+    root: INFO
+    lavalink: INFO
+    # Set to INFO to see OAuth device codes and token status
+    dev.lavalink.youtube.http.YoutubeOauth2Handler: INFO
+
+  logback:
+    rollingpolicy:
+      max-file-size: 50MB
+      max-history: 7
+
+metrics:
+  prometheus:
+    enabled: false
+    endpoint: /metrics

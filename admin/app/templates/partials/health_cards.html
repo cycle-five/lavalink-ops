@@ -1,0 +1,68 @@
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+    <!-- Lavalink -->
+    <div class="bg-gray-800 shadow rounded-lg border {{ 'border-green-500/50' if lavalink_healthy else 'border-red-500/50' }} p-6 flex items-center justify-between">
+        <div>
+            <h3 class="text-lg font-medium text-white">Lavalink Node</h3>
+            <p class="text-sm text-gray-400 mt-1">Audio Sender & Tracker</p>
+        </div>
+        <div class="flex items-center">
+            {% if lavalink_healthy %}
+            <span class="flex items-center text-green-400 text-sm font-medium">
+                <span class="w-2.5 h-2.5 bg-green-400 rounded-full mr-2"></span>
+                Healthy
+            </span>
+            {% else %}
+            <span class="flex items-center text-red-400 text-sm font-medium animate-pulse">
+                <span class="w-2.5 h-2.5 bg-red-500 rounded-full mr-2"></span>
+                Unhealthy
+            </span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- yt-cipher -->
+    <div class="bg-gray-800 shadow rounded-lg border {{ 'border-green-500/50' if cipher_healthy else 'border-red-500/50' }} p-6 flex items-center justify-between">
+        <div>
+            <h3 class="text-lg font-medium text-white">yt-cipher</h3>
+            <p class="text-sm text-gray-400 mt-1">Decipher Service (Deno)</p>
+        </div>
+        <div class="flex items-center">
+            {% if cipher_healthy %}
+            <span class="flex items-center text-green-400 text-sm font-medium">
+                <span class="w-2.5 h-2.5 bg-green-400 rounded-full mr-2"></span>
+                Healthy
+            </span>
+            {% else %}
+            <span class="flex items-center text-red-400 text-sm font-medium animate-pulse">
+                <span class="w-2.5 h-2.5 bg-red-500 rounded-full mr-2"></span>
+                Unhealthy
+            </span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- bgutil-pot -->
+    <div class="bg-gray-800 shadow rounded-lg border {{ 'border-green-500/50' if pot_healthy else 'border-red-500/50' }} p-6 flex items-center justify-between">
+        <div>
+            <h3 class="text-lg font-medium text-white">bgutil-pot</h3>
+            <p class="text-sm text-gray-400 mt-1">PoToken Provider (Rust)</p>
+        </div>
+        <div class="flex items-center">
+            {% if pot_healthy %}
+            <span class="flex items-center text-green-400 text-sm font-medium">
+                <span class="w-2.5 h-2.5 bg-green-400 rounded-full mr-2"></span>
+                Healthy
+            </span>
+            {% else %}
+            <span class="flex items-center text-red-400 text-sm font-medium animate-pulse">
+                <span class="w-2.5 h-2.5 bg-red-500 rounded-full mr-2"></span>
+                Unhealthy
+            </span>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+
+<p class="text-xs text-gray-500 mt-6 text-right">Last checked: {{ now()|default('Just now') }}</p>

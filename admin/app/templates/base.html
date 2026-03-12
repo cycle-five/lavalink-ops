@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Lavalink Ops{% endblock %}</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        lavalink: '#F54E4E'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen flex flex-col font-sans">
+    
+    <!-- Navbar -->
+    <nav class="bg-gray-800 border-b border-gray-700">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-3">
+                    <svg class="h-8 w-8 text-lavalink" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                    </svg>
+                    <span class="text-xl font-bold tracking-tight text-white">Lavalink Ops</span>
+                </div>
+                <!-- Desktop Menu -->
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="/" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
+                        <a href="/health" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium">Health</a>
+                        <a href="/config" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium">Config</a>
+                        <a href="/tokens" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium">Tokens</a>
+                        <a href="/logs" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium">Logs</a>
+                        <a href="/test" class="hover:bg-gray-700 px-3 py-2 rounded-md text-sm font-medium">Test Track</a>
+                        
+                        <form action="/logout" method="POST" class="inline">
+                            <button type="submit" class="text-gray-400 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Logout</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Global Toast Notifier Using Alpine -->
+    <div x-data="{ show: false, message: '', isError: false }"
+         @notify.window="show = true; message = $event.detail.msg; isError = $event.detail.error || false; setTimeout(() => { show = false }, 5000)"
+         class="fixed bottom-4 right-4 z-50">
+        <div x-show="show" x-transition.opacity
+             class="px-4 py-3 rounded shadow-lg flex items-center gap-3 text-white"
+             :class="isError ? 'bg-red-600' : 'bg-green-600'"
+             x-cloak>
+            <span x-text="message"></span>
+            <button @click="show = false" class="ml-2 py-1 px-2 rounded hover:bg-black/20 text-sm">&times;</button>
+        </div>
+    </div>
+
+</body>
+</html>
