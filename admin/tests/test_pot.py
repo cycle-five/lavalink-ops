@@ -20,7 +20,7 @@ def mock_httpx_client():
 @pytest.mark.asyncio
 async def test_generate_token(mock_httpx_client):
     mock_resp = MagicMock()
-    mock_resp.json.return_value = {"poToken": "po123", "visitorData": "vd123"}
+    mock_resp.json.return_value = {"poToken": "po123", "contentBinding": "vd123"}
     mock_httpx_client.post.return_value = mock_resp
     
     data = await generate_token()
@@ -38,7 +38,7 @@ async def test_refresh_and_inject(mock_restart, mock_get_state, mock_update, moc
     mock_get_state.return_value = state_mock
     
     mock_resp = MagicMock()
-    mock_resp.json.return_value = {"poToken": "po123", "visitorData": "vd123"}
+    mock_resp.json.return_value = {"poToken": "po123", "contentBinding": "vd123"}
     mock_httpx_client.post.return_value = mock_resp
     
     await refresh_and_inject()

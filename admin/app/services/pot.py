@@ -11,7 +11,7 @@ async def is_healthy() -> bool:
         client = get_http_client()
         settings = get_settings()
         
-        url = f"{settings.bgutil_url}/health"
+        url = f"{settings.bgutil_url}/ping"
         res = await client.get(url, timeout=5.0)
         return res.status_code == 200
     except Exception:
@@ -27,14 +27,17 @@ async def generate_token() -> dict:
     client = get_http_client()
     settings = get_settings()
     
-    url = f"{settings.bgutil_url}/token"
-    res = await client.post(url, timeout=30.0) # Generation can take a few seconds
+    url = f"{settings.bgutil_url}/get_pot"
+    res = await client.post(url, json={}, timeout=30.0) # Generation can take a few seconds
     res.raise_for_status()
     
     data = res.json()
     # It might return different keys depending on the service, map them if needed
-    # We expect {"poToken": "...", "visitorData": "..."}
-    return data
+    # We expect {"poToken": "...", "contentBinding" (or visitorData): "..."}
+    return {
+        "poToken": data.get("poToken"),
+        "visitorData": data.get("visitorData") or data.get("contentBinding")
+    }
 
 
 async def refresh_and_inject() -> None:

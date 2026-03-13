@@ -38,6 +38,11 @@
                     class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
                 Raw YAML
             </button>
+            <button @click="tab = 'examples'" 
+                    :class="tab === 'examples' ? 'border-lavalink text-lavalink' : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-300'"
+                    class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                Connection Examples
+            </button>
         </nav>
     </div>
 
@@ -146,6 +151,60 @@
                 </button>
             </div>
         </form>
+    </div>
+
+    <!-- Connection Examples Tab -->
+    <div x-show="tab === 'examples'" class="p-6" x-cloak>
+        <div class="space-y-8">
+            
+            <!-- Python Example -->
+            <div>
+                <h3 class="text-lg font-medium text-white mb-2">Python (wavelink / discord.py)</h3>
+                <p class="text-sm text-gray-400 mb-2">Configure Wavelink to connect to this node in your Discord bot's setup hook.</p>
+                <div class="bg-gray-900 rounded-md p-4 border border-gray-700 overflow-x-auto">
+                    <pre class="text-sm text-gray-300 font-mono"><code>import wavelink
+
+async def setup_hook():
+    node = wavelink.Node(
+        uri="http://YOUR_SERVER_IP:2333",
+        password="{{ password }}"
+    )
+    await wavelink.Pool.connect(nodes=[node], client=bot, cache_capacity=100)</code></pre>
+                </div>
+            </div>
+
+            <!-- Rust Example -->
+            <div>
+                <h3 class="text-lg font-medium text-white mb-2">Rust (lavalink-rs / serenity)</h3>
+                <p class="text-sm text-gray-400 mb-2">Connect to the node using lavalink-rs.</p>
+                <div class="bg-gray-900 rounded-md p-4 border border-gray-700 overflow-x-auto">
+                    <pre class="text-sm text-gray-300 font-mono"><code>use lavalink_rs::{LavalinkClient, model::events};
+
+let node = NodeBuilder::new("Node 1")
+    .hostname("YOUR_SERVER_IP:2333")
+    .password("{{ password }}")
+    .build()?;
+
+let client = LavalinkClient::builder(bot_id)
+    .add_node(node)
+    .build(events)
+    .await?;</code></pre>
+                </div>
+            </div>
+
+            <!-- Ready-made bots -->
+            <div>
+                <h3 class="text-lg font-medium text-white mb-2">Ready-made Discord Bots</h3>
+                <p class="text-sm text-gray-400 mb-2">If you don't want to code your own bot, you can host these popular self-hosted bots and point them to your node:</p>
+                <ul class="list-disc list-inside text-sm text-gray-300 space-y-2">
+                    <li><a href="https://github.com/jagrosh/MusicBot" target="_blank" class="text-lavalink hover:underline">JMusicBot</a> - Java, highly popular and stable.</li>
+                    <li><a href="https://github.com/SudhanPlayz/Discord-MusicBot" target="_blank" class="text-lavalink hover:underline">Discord-MusicBot</a> - Node.js based feature-rich bot.</li>
+                    <li><a href="https://github.com/JustAnotherByte/Muse" target="_blank" class="text-lavalink hover:underline">Muse</a> - TypeScript/Discord.js bot.</li>
+                </ul>
+                <p class="text-sm text-gray-400 mt-3">Simply enter <code class="bg-gray-800 px-1 rounded text-red-400">YOUR_SERVER_IP:2333</code> and password <code class="bg-gray-800 px-1 rounded text-red-400">{{ password }}</code> into their respective config files!</p>
+            </div>
+
+        </div>
     </div>
 </div>
 {% endblock %}

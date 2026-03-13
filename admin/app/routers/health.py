@@ -2,6 +2,7 @@ from fastapi import APIRouter, Request, Header
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 import os
+from datetime import datetime
 
 from app.services import lavalink, cipher, pot
 
@@ -23,7 +24,8 @@ async def health_page(request: Request, hx_request: str | None = Header(default=
         "request": request,
         "lavalink_healthy": lavalink_healthy,
         "cipher_healthy": cipher_healthy,
-        "pot_healthy": pot_healthy
+        "pot_healthy": pot_healthy,
+        "now": datetime.now
     }
 
     if hx_request:
