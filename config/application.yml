@@ -51,8 +51,8 @@ plugins:
       - TVHTML5EMBEDDED
       - ANDROID_VR
     oauth:
-      enabled: true
-      skipInitialization: false
+      enabled: false
+      skipInitialization: true
       refreshToken: ""
 
     # PoToken — proof-of-origin token to bypass bot detection
