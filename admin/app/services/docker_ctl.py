@@ -62,4 +62,4 @@ def stream_logs(name: str) -> Generator[str, None, None]:
     except docker.errors.NotFound:
         yield f"Container {name} not found.\n"
     except Exception as e:
-        yield f"Stream interupted: {e}\n"
+        yield f"Stream interrupted: {e}\n"

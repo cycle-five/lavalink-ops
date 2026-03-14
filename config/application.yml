@@ -53,20 +53,19 @@ plugins:
     oauth:
       enabled: true
       skipInitialization: false
-      # refreshToken: "paste-your-refresh-token-here"
+      refreshToken: ""
 
     # PoToken — proof-of-origin token to bypass bot detection
     # These values are injected by the admin panel's PoToken manager.
     # You can also generate them manually with BgUtils.
-      refreshToken: 
-        ""
     pot:
       token: ""
-      visitorData: "CgtmRVlEOEgzRVJ3byj3ss3NBjIKCgJVUxIEGgAgWQ%3D%3D"
+      visitorData: ""
 
     # Remote cipher server — offloads signature deciphering to yt-cipher
+    # Uses 127.0.0.1 because all services run on host networking
     remoteCipher:
-      url: "http://yt-cipher:8001"
+      url: "http://127.0.0.1:8001"
       password: "change-me-cipher-token"
       userAgent: "lavalink-ops"
 
@@ -89,8 +88,9 @@ metrics:
     enabled: false
     endpoint: /metrics
 
-  routePlanner:
-    registry:
-      class: "RotatingNanoIpRoutePlanner"
-      options:
-        ipBlock: "2601:18c:8203:1610::/64" # Put your Proxmox/Vultr /64 block here
+  # Uncomment and configure if you have a dedicated IPv6 block for rotation:
+  # routePlanner:
+  #   registry:
+  #     class: "RotatingNanoIpRoutePlanner"
+  #     options:
+  #       ipBlock: "your:ipv6::/64"

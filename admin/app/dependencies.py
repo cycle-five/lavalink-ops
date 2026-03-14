@@ -6,7 +6,6 @@ from typing import Any, Dict
 
 import docker
 import httpx
-from fastapi import Request
 
 from app.config import Settings
 
