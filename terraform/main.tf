@@ -161,8 +161,8 @@ output "instance_ipv4" {
 }
 
 output "instance_ipv6_subnet" {
-  value       = vultr_instance.lavalink_node.v6_main_ip
-  description = "IPv6 address — your /64 block for application.yml routePlanner"
+  value       = "${vultr_instance.lavalink_node.v6_network}/${vultr_instance.lavalink_node.v6_network_size}"
+  description = "IPv6 subnet (e.g. 2001:db8::/64) for application.yml routePlanner"
 }
 
 output "ssh_tunnel_command" {
