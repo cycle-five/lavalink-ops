@@ -119,6 +119,11 @@ fi
 mkdir -p "$SCRIPT_DIR/data/lavalink/plugins"
 mkdir -p "$SCRIPT_DIR/data/lavalink/logs"
 mkdir -p "$SCRIPT_DIR/data/admin"
+
+# Lavalink runs as UID 322 inside the container — fix ownership so it can write plugins/logs
+if command -v chown &>/dev/null; then
+    chown -R 322:322 "$SCRIPT_DIR/data/lavalink" 2>/dev/null || log "(chown skipped — run as root or use sudo if plugin downloads fail)"
+fi
 log "Created data directories"
 
 echo ""

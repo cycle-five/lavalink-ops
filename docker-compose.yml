@@ -7,7 +7,7 @@ services:
     volumes:
       - ./data:/data
     command: >
-      sh -c "mkdir -p /data/lavalink/plugins /data/lavalink/logs /data/admin && echo 'Data directories ready'"
+      sh -c "mkdir -p /data/lavalink/plugins /data/lavalink/logs /data/admin && chown -R 322:322 /data/lavalink && echo 'Data directories ready'"
 
   lavalink:
     image: ghcr.io/lavalink-devs/lavalink:4
