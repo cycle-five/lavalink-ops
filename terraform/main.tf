@@ -101,29 +101,44 @@ resource "vultr_instance" "lavalink_node" {
   firewall_group_id = vultr_firewall_group.lavalink.id
 
   user_data = <<-EOF
-#!/bin/bash
-set -euo pipefail
+    #!/bin/bash
+    set -euo pipefail
+    
+    # 1. Enable non-local binding for Lavalink RoutePlanner
+    echo "net.ipv6.ip_nonlocal_bind=1" >> /etc/sysctl.conf
+    sysctl -p
 
-# Enable non-local IPv6 binding for Lavalink RoutePlanner
-echo "net.ipv6.ip_nonlocal_bind=1" >> /etc/sysctl.conf
-sysctl -p
+    # 2. Install Docker via the official APT repository (avoids curl-to-shell execution).
+    #    Follows https://docs.docker.com/engine/install/debian/
+    #    First update syncs package lists so we can install prerequisites.
+    apt-get update
+    apt-get install -y ca-certificates curl
+    install -m 0755 -d /etc/apt/keyrings
+    # Download Docker's official GPG key (ASCII-armored .asc).
+    # All packages installed from this repo are cryptographically verified against this key by apt.
+    curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
+    chmod a+r /etc/apt/keyrings/docker.asc
+    echo \
+      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian \
+      $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+      tee /etc/apt/sources.list.d/docker.list > /dev/null
+    # Second update picks up the newly added Docker repository before installing.
+    apt-get update
+    apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-# Install Docker
-curl -fsSL https://get.docker.com | sh
+    # 3. Pull down the Lavalink-Ops stack
+    apt-get install -y git
+  
+    # Clone and set up the stack
+    git clone ${var.repo_url} /opt/lavalink-ops
+    cd /opt/lavalink-ops
 
-# Install git
-apt-get install -y git
+    # One-click setup: generates secrets, syncs config, creates dirs
+    ./setup.sh
 
-# Clone and set up the stack
-git clone ${var.repo_url} /opt/lavalink-ops
-cd /opt/lavalink-ops
-
-# One-click setup: generates secrets, syncs config, creates dirs
-./setup.sh
-
-# Start the stack
-docker compose up --build -d
-EOF
+    # Start the stack
+    docker compose up --build -d
+  EOF
 }
 
 # --- Outputs ---
