@@ -94,14 +94,13 @@ EOF
     log "Generated .env with fresh secrets"
 
     # --- Sync secrets into application.yml ---
-    # Replace the lavalink server password
-    sed -i "s|password: \"youshallnotpass\"|password: \"${LAVALINK_PASSWORD}\"|g" "$CONFIG_FILE"
-    # Also handle unquoted form
-    sed -i "s|password: youshallnotpass|password: \"${LAVALINK_PASSWORD}\"|g" "$CONFIG_FILE"
-
-    # Replace the cipher token
-    sed -i "s|password: \"change-me-cipher-token\"|password: \"${CIPHER_API_TOKEN}\"|g" "$CONFIG_FILE"
-    sed -i "s|password: change-me-cipher-token|password: \"${CIPHER_API_TOKEN}\"|g" "$CONFIG_FILE"
+    # Using -i.bak is more portable for sed (works on GNU/Linux and macOS/BSD)
+    # and replacing the unique placeholder values is more robust than matching the whole line.
+    sed -i.bak \
+        -e "s/youshallnotpass/${LAVALINK_PASSWORD}/" \
+        -e "s/change-me-cipher-token/${CIPHER_API_TOKEN}/" \
+        "$CONFIG_FILE"
+    rm "${CONFIG_FILE}.bak"
 
     log "Synced secrets into application.yml"
 
