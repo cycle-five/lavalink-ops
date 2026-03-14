@@ -45,6 +45,18 @@ variable "admin_port" {
   default     = 8080
 }
 
+variable "ssh_allowed_ipv4_subnet" {
+  description = "IPv4 subnet allowed to access SSH (set to your IP or network; default is 0.0.0.0 for all IPv4)"
+  type        = string
+  default     = "0.0.0.0"
+}
+
+variable "ssh_allowed_ipv4_subnet_size" {
+  description = "CIDR prefix length for the allowed SSH IPv4 subnet (e.g. 32 for a single IP; 0 allows all IPv4)"
+  type        = number
+  default     = 0
+}
+
 # --- Firewall ---
 
 resource "vultr_firewall_group" "lavalink" {
@@ -55,8 +67,8 @@ resource "vultr_firewall_rule" "ssh" {
   firewall_group_id = vultr_firewall_group.lavalink.id
   protocol          = "tcp"
   ip_type           = "v4"
-  subnet            = "0.0.0.0"
-  subnet_size       = 0
+  subnet            = var.ssh_allowed_ipv4_subnet
+  subnet_size       = var.ssh_allowed_ipv4_subnet_size
   port              = "22"
 }
 
