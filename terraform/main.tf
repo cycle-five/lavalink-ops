@@ -8,8 +8,8 @@ terraform {
 }
 
 provider "vultr" {
-  api_key    = var.vultr_api_key
-  rate_limit = 100
+  api_key     = var.vultr_api_key
+  rate_limit  = 100
   retry_limit = 3
 }
 
@@ -167,7 +167,7 @@ output "instance_ipv6_subnet" {
 
 output "ssh_tunnel_command" {
   value       = "ssh -L ${var.admin_port}:localhost:${var.admin_port} root@${vultr_instance.lavalink_node.main_ip}"
-  description = "SSH tunnel to access the admin panel at http://localhost:${var.admin_port}"
+  description = "SSH tunnel to access the admin panel."
 }
 
 output "lavalink_endpoint" {
