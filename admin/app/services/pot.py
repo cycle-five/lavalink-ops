@@ -1,7 +1,7 @@
 from datetime import datetime
 
-from app.dependencies import get_settings, get_http_client, get_state
-from app.services.yaml_manager import update_config_field
+from app.dependencies import get_settings, get_http_client, get_state, get_config_lock
+from app.services.yaml_manager import read_config, _set_nested, _write_config_to_disk
 from app.services.docker_ctl import restart_container
 
 
@@ -60,17 +60,18 @@ async def refresh_and_inject() -> None:
         # 1. Generate token
         data = await generate_token()
         
-        if "poToken" not in data or "visitorData" not in data:
+        po_token = data.get("poToken")
+        visitor_data = data.get("visitorData")
+        if not po_token or not visitor_data:
             raise ValueError(f"Invalid response from bgutil-pot: {data}")
-            
-        po_token = data["poToken"]
-        visitor_data = data["visitorData"]
         
-        # 2 & 3. Lock + Update application.yml
-        # Note update_config_field acquires the lock internally, 
-        # so we'll just call it sequentially.
-        await update_config_field(["plugins", "youtube", "pot", "token"], po_token)
-        await update_config_field(["plugins", "youtube", "pot", "visitorData"], visitor_data)
+        # 2 & 3. Lock + Update both fields atomically
+        lock = get_config_lock()
+        async with lock:
+            config_data = await read_config()
+            _set_nested(config_data, ["plugins", "youtube", "pot", "token"], po_token)
+            _set_nested(config_data, ["plugins", "youtube", "pot", "visitorData"], visitor_data)
+            _write_config_to_disk(config_data, settings.config_path)
         
         # 4. Restart container
         # Note: the prompt asks to restart Lavalink, we use docker SDK block=True

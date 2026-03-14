@@ -1,9 +1,9 @@
 import os
-from typing import Annotated
-from fastapi import APIRouter, Request, Form, Header
+from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from app.dependencies import get_config_lock
 from app.services import yaml_manager, docker_ctl
 
 router = APIRouter()
@@ -62,24 +62,23 @@ async def save_form(
     pot_visitor: str = Form("")
 ):
     try:
-        # Load the configuration to modify it
-        config_data = await yaml_manager.read_config()
-        
-        # Modify the specific nested fields
-        yaml_manager._set_nested(config_data, ["lavalink", "server", "password"], password)
-        
-        yaml_manager._set_nested(config_data, ["plugins", "youtube", "clients"], clients)
-        yaml_manager._set_nested(config_data, ["plugins", "youtube", "oauth", "enabled"], oauth_enabled)
-        
-        if oauth_refresh:
-            yaml_manager._set_nested(config_data, ["plugins", "youtube", "oauth", "refreshToken"], oauth_refresh)
-        
-        if pot_token and pot_visitor:
-            yaml_manager._set_nested(config_data, ["plugins", "youtube", "pot", "token"], pot_token)
-            yaml_manager._set_nested(config_data, ["plugins", "youtube", "pot", "visitorData"], pot_visitor)
+        lock = get_config_lock()
+        async with lock:
+            config_data = await yaml_manager.read_config()
 
-        await yaml_manager.write_config(config_data)
-        
+            yaml_manager._set_nested(config_data, ["lavalink", "server", "password"], password)
+            yaml_manager._set_nested(config_data, ["plugins", "youtube", "clients"], clients)
+            yaml_manager._set_nested(config_data, ["plugins", "youtube", "oauth", "enabled"], oauth_enabled)
+
+            if oauth_refresh:
+                yaml_manager._set_nested(config_data, ["plugins", "youtube", "oauth", "refreshToken"], oauth_refresh)
+
+            if pot_token and pot_visitor:
+                yaml_manager._set_nested(config_data, ["plugins", "youtube", "pot", "token"], pot_token)
+                yaml_manager._set_nested(config_data, ["plugins", "youtube", "pot", "visitorData"], pot_visitor)
+
+            yaml_manager._write_config_to_disk(config_data, yaml_manager.get_settings().config_path)
+
         return templates.TemplateResponse("partials/save_success.html", {"request": request, "message": "Config saved successfully!"})
     except Exception as e:
         return templates.TemplateResponse("partials/save_error.html", {"request": request, "error": str(e)})
@@ -89,6 +88,8 @@ async def save_form(
 async def save_raw(request: Request, raw_yaml: str = Form(...)):
     try:
         data = await yaml_manager.validate_yaml_string(raw_yaml)
+        if data is None:
+            raise ValueError("Empty or invalid YAML")
         await yaml_manager.write_config(data)
         return templates.TemplateResponse("partials/save_success.html", {"request": request, "message": "Raw YAML saved successfully!"})
     except Exception as e:

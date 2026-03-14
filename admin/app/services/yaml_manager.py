@@ -26,33 +26,38 @@ async def read_config() -> CommentedMap:
         return yaml.load(f)
 
 
+def _write_config_to_disk(data: CommentedMap, config_path: str) -> None:
+    """Internal: write config to disk with backup and validation. Caller must hold lock."""
+    # 1. Create backup
+    if os.path.exists(config_path):
+        backup_path = f"{config_path}.bak"
+        shutil.copy2(config_path, backup_path)
+
+    # 2. Write to a temporary file first
+    tmp_path = f"{config_path}.tmp"
+    yaml = _get_yaml_instance()
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        yaml.dump(data, f)
+
+    # 3. Validate the written YAML structure
+    try:
+        with open(tmp_path, "r", encoding="utf-8") as f:
+            _get_yaml_instance().load(f)
+    except Exception as e:
+        os.remove(tmp_path)
+        raise RuntimeError(f"Failed to generate valid YAML: {e}")
+
+    # 4. Atomic replace
+    os.replace(tmp_path, config_path)
+
+
 async def write_config(data: CommentedMap) -> None:
     """Write back the configuration, preserving comments and creating a backup."""
     settings = get_settings()
     lock = get_config_lock()
-    
+
     async with lock:
-        # 1. Create backup
-        if os.path.exists(settings.config_path):
-            backup_path = f"{settings.config_path}.bak"
-            shutil.copy2(settings.config_path, backup_path)
-            
-        # 2. Write to a temporary file first
-        tmp_path = f"{settings.config_path}.tmp"
-        yaml = _get_yaml_instance()
-        with open(tmp_path, "w", encoding="utf-8") as f:
-            yaml.dump(data, f)
-            
-        # 3. Validate the written YAML structure
-        try:
-            with open(tmp_path, "r", encoding="utf-8") as f:
-                _get_yaml_instance().load(f)
-        except Exception as e:
-            os.remove(tmp_path)
-            raise RuntimeError(f"Failed to generate valid YAML: {e}")
-            
-        # 4. Atomic replace
-        os.replace(tmp_path, settings.config_path)
+        _write_config_to_disk(data, settings.config_path)
 
 
 def _get_nested(data: dict, path: List[str]) -> Any:
@@ -92,32 +97,15 @@ async def get_config_field(path: List[str]) -> Any:
 async def update_config_field(path: List[str], value: Any) -> None:
     """Navigate nested keys, update value, write file while preserving comments."""
     lock = get_config_lock()
-    async with lock: # Acquire lock for the read-modify-write cycle
+    async with lock:
         settings = get_settings()
         yaml = _get_yaml_instance()
-        
+
         with open(settings.config_path, "r", encoding="utf-8") as f:
             data = yaml.load(f)
-            
+
         _set_nested(data, path, value)
-        
-        # We duplicate the safe-write logic here because we already hold the lock
-        if os.path.exists(settings.config_path):
-            backup_path = f"{settings.config_path}.bak"
-            shutil.copy2(settings.config_path, backup_path)
-            
-        tmp_path = f"{settings.config_path}.tmp"
-        with open(tmp_path, "w", encoding="utf-8") as f:
-            yaml.dump(data, f)
-            
-        try:
-            with open(tmp_path, "r", encoding="utf-8") as f:
-                _get_yaml_instance().load(f)
-        except Exception as e:
-            os.remove(tmp_path)
-            raise RuntimeError(f"Failed to generate valid YAML: {e}")
-            
-        os.replace(tmp_path, settings.config_path)
+        _write_config_to_disk(data, settings.config_path)
 
 
 async def validate_yaml_string(yaml_str: str) -> CommentedMap:

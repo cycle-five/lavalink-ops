@@ -1,8 +1,10 @@
 import asyncio
+import hashlib
+import hmac
 from contextlib import asynccontextmanager
 
 import httpx
-from fastapi import FastAPI, Depends, Request
+from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -14,6 +16,17 @@ from app.routers import dashboard, config, health, tokens, logs, test
 
 # Initialize APScheduler (we'll start it in lifespan)
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+
+def _sign_session(secret_key: str) -> str:
+    """Create an HMAC-signed session token."""
+    return hmac.new(secret_key.encode(), b"admin_session", hashlib.sha256).hexdigest()
+
+
+def _verify_session(cookie_value: str, secret_key: str) -> bool:
+    """Verify an HMAC-signed session cookie."""
+    expected = _sign_session(secret_key)
+    return hmac.compare_digest(cookie_value, expected)
 
 scheduler = AsyncIOScheduler()
 
@@ -72,10 +85,10 @@ class BasicAuthMiddleware(BaseHTTPMiddleware):
         if request.url.path == "/login" or request.url.path == "/do-login":
             return await call_next(request)
 
-        # Check authentication (simple cookie)
+        # Check authentication (HMAC-signed cookie)
         settings = get_settings()
         auth_cookie = request.cookies.get("admin_session")
-        if auth_cookie != settings.admin_password:
+        if not auth_cookie or not _verify_session(auth_cookie, settings.admin_secret_key):
             # For HTMX requests, we should redirect using HX-Redirect header
             if request.headers.get("HX-Request"):
                 response = Response(status_code=401)
@@ -109,10 +122,11 @@ async def do_login(request: Request):
     if password == settings.admin_password:
         response = RedirectResponse(url="/", status_code=303)
         response.set_cookie(
-            key="admin_session", 
-            value=settings.admin_password, # In a real app we'd sign this with admin_secret_key, but simple is ok here based on prompt
+            key="admin_session",
+            value=_sign_session(settings.admin_secret_key),
             httponly=True,
-            samesite="lax"
+            samesite="lax",
+            max_age=86400 * 7,  # 7 days
         )
         return response
         

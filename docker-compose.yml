@@ -1,4 +1,14 @@
 services:
+  # Init container — creates data directories on first run
+  init:
+    image: busybox:latest
+    container_name: lavalink-init
+    restart: "no"
+    volumes:
+      - ./data:/data
+    command: >
+      sh -c "mkdir -p /data/lavalink/plugins /data/lavalink/logs /data/admin && echo 'Data directories ready'"
+
   lavalink:
     image: ghcr.io/lavalink-devs/lavalink:4
     container_name: ${LAVALINK_CONTAINER_NAME:-lavalink}
@@ -19,6 +29,8 @@ services:
       retries: 3
       start_period: 15s
     depends_on:
+      init:
+        condition: service_completed_successfully
       yt-cipher:
         condition: service_started
 
@@ -58,7 +70,7 @@ services:
     network_mode: "host"
     environment:
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-change-me-admin}
-      - ADMIN_SECRET_KEY=${ADMIN_SECRET_KEY:-generate-a-secret-key}
+      - ADMIN_SECRET_KEY=${ADMIN_SECRET_KEY:-change-me-session-secret}
       - ADMIN_PORT=${ADMIN_PORT:-8080}
       - LAVALINK_HOST=127.0.0.1
       - LAVALINK_PORT=${LAVALINK_PORT:-2333}
@@ -73,10 +85,15 @@ services:
       - CONFIG_PATH=/config/application.yml
       - STATE_PATH=/state/state.json
     volumes:
-      - ./config:/config # read-write access to application.yml
-      - ./data/admin:/state # persistent state
-      - /var/run/docker.sock:/var/run/docker.sock:ro # container restart capability
+      - ./config:/config
+      - ./data/admin:/state
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     depends_on:
-      - lavalink
-      - yt-cipher
-      - bgutil-pot
+      init:
+        condition: service_completed_successfully
+      lavalink:
+        condition: service_started
+      yt-cipher:
+        condition: service_started
+      bgutil-pot:
+        condition: service_started
