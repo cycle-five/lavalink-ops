@@ -21,7 +21,6 @@ async def health_page(request: Request, hx_request: str | None = Header(default=
     pot_healthy = await pot.is_healthy()
 
     context = {
-        "request": request,
         "lavalink_healthy": lavalink_healthy,
         "cipher_healthy": cipher_healthy,
         "pot_healthy": pot_healthy,
@@ -29,6 +28,6 @@ async def health_page(request: Request, hx_request: str | None = Header(default=
     }
 
     if hx_request:
-        return templates.TemplateResponse("partials/health_cards.html", context)
+        return templates.TemplateResponse(request=request, name="partials/health_cards.html", context=context)
     
-    return templates.TemplateResponse("health.html", context)
+    return templates.TemplateResponse(request=request, name="health.html", context=context)

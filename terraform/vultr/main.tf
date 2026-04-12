@@ -8,8 +8,8 @@ terraform {
 }
 
 provider "vultr" {
-  api_key    = var.vultr_api_key
-  rate_limit = 100
+  api_key     = var.vultr_api_key
+  rate_limit  = 100
   retry_limit = 3
 }
 
@@ -45,6 +45,18 @@ variable "admin_port" {
   default     = 8080
 }
 
+variable "ssh_allowed_ipv4_subnet" {
+  description = "IPv4 subnet allowed to access SSH (set to your IP or network; default is 0.0.0.0 for all IPv4)"
+  type        = string
+  default     = "0.0.0.0"
+}
+
+variable "ssh_allowed_ipv4_subnet_size" {
+  description = "CIDR prefix length for the allowed SSH IPv4 subnet (e.g. 32 for a single IP; 0 allows all IPv4)"
+  type        = number
+  default     = 0
+}
+
 # --- Firewall ---
 
 resource "vultr_firewall_group" "lavalink" {
@@ -55,8 +67,8 @@ resource "vultr_firewall_rule" "ssh" {
   firewall_group_id = vultr_firewall_group.lavalink.id
   protocol          = "tcp"
   ip_type           = "v4"
-  subnet            = "0.0.0.0"
-  subnet_size       = 0
+  subnet            = var.ssh_allowed_ipv4_subnet
+  subnet_size       = var.ssh_allowed_ipv4_subnet_size
   port              = "22"
 }
 
@@ -100,18 +112,33 @@ resource "vultr_instance" "lavalink_node" {
   enable_ipv6       = true
   firewall_group_id = vultr_firewall_group.lavalink.id
 
-  user_data = <<-EOF
+  user_data = <<EOF
 #!/bin/bash
 set -euo pipefail
 
-# Enable non-local IPv6 binding for Lavalink RoutePlanner
+# 1. Enable non-local binding for Lavalink RoutePlanner
 echo "net.ipv6.ip_nonlocal_bind=1" >> /etc/sysctl.conf
 sysctl -p
 
-# Install Docker
-curl -fsSL https://get.docker.com | sh
+# 2. Install Docker via the official APT repository (avoids curl-to-shell execution).
+#    Follows https://docs.docker.com/engine/install/debian/
+#    First update syncs package lists so we can install prerequisites.
+apt-get update
+apt-get install -y ca-certificates curl
+install -m 0755 -d /etc/apt/keyrings
+# Download Docker's official GPG key (ASCII-armored .asc).
+# All packages installed from this repo are cryptographically verified against this key by apt.
+curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
+chmod a+r /etc/apt/keyrings/docker.asc
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+  tee /etc/apt/sources.list.d/docker.list > /dev/null
+# Second update picks up the newly added Docker repository before installing.
+apt-get update
+apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-# Install git
+# 3. Pull down the Lavalink-Ops stack
 apt-get install -y git
 
 # Clone and set up the stack
@@ -134,13 +161,13 @@ output "instance_ipv4" {
 }
 
 output "instance_ipv6_subnet" {
-  value       = vultr_instance.lavalink_node.v6_main_ip
-  description = "IPv6 address — your /64 block for application.yml routePlanner"
+  value       = "${vultr_instance.lavalink_node.v6_network}/${vultr_instance.lavalink_node.v6_network_size}"
+  description = "IPv6 subnet (e.g. 2001:db8::/64) for application.yml routePlanner"
 }
 
 output "ssh_tunnel_command" {
   value       = "ssh -L ${var.admin_port}:localhost:${var.admin_port} root@${vultr_instance.lavalink_node.main_ip}"
-  description = "SSH tunnel to access the admin panel at http://localhost:${var.admin_port}"
+  description = "SSH tunnel to access the admin panel."
 }
 
 output "lavalink_endpoint" {

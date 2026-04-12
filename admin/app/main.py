@@ -111,7 +111,7 @@ app.include_router(test.router)
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="login.html")
 
 @app.post("/do-login")
 async def do_login(request: Request):
@@ -132,8 +132,9 @@ async def do_login(request: Request):
         
     # Login failed
     return templates.TemplateResponse(
-        "login.html", 
-        {"request": request, "error": "Invalid password"}, 
+        request=request,
+        name="login.html",
+        context={"error": "Invalid password"}, 
         status_code=401
     )
 

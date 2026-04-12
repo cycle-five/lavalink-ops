@@ -57,4 +57,4 @@ See [DESIGN.md](DESIGN.md) for the full architecture document.
 
 ## License
 
-TBD
+MIT (see [LICENSE](LICENSE))

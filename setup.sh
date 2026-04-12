@@ -124,6 +124,7 @@ mkdir -p "$SCRIPT_DIR/data/admin"
 if command -v chown &>/dev/null; then
     chown -R 322:322 "$SCRIPT_DIR/data/lavalink" 2>/dev/null || log "(chown skipped — run as root or use sudo if plugin downloads fail)"
 fi
+
 log "Created data directories"
 
 echo ""

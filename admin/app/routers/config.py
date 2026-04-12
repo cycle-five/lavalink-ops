@@ -38,7 +38,6 @@ async def config_page(request: Request):
     pot_enabled = yaml_manager._get_nested(plugins, ["pot", "token"]) is not None # Best guess enabled
     
     context = {
-        "request": request,
         "raw_yaml": raw_yaml,
         "password": password,
         "clients": clients,
@@ -48,7 +47,7 @@ async def config_page(request: Request):
         "pot_visitor": pot_visitor,
         "pot_enabled": pot_enabled
     }
-    return templates.TemplateResponse("config.html", context)
+    return templates.TemplateResponse(request=request, name="config.html", context=context)
 
 
 @router.post("/config/save-form")
@@ -79,9 +78,9 @@ async def save_form(
 
             yaml_manager._write_config_to_disk(config_data, yaml_manager.get_settings().config_path)
 
-        return templates.TemplateResponse("partials/save_success.html", {"request": request, "message": "Config saved successfully!"})
+        return templates.TemplateResponse(request=request, name="partials/save_success.html", context={"message": "Config saved successfully!"})
     except Exception as e:
-        return templates.TemplateResponse("partials/save_error.html", {"request": request, "error": str(e)})
+        return templates.TemplateResponse(request=request, name="partials/save_error.html", context={"error": str(e)})
 
 
 @router.post("/config/save-raw")
@@ -91,9 +90,9 @@ async def save_raw(request: Request, raw_yaml: str = Form(...)):
         if data is None:
             raise ValueError("Empty or invalid YAML")
         await yaml_manager.write_config(data)
-        return templates.TemplateResponse("partials/save_success.html", {"request": request, "message": "Raw YAML saved successfully!"})
+        return templates.TemplateResponse(request=request, name="partials/save_success.html", context={"message": "Raw YAML saved successfully!"})
     except Exception as e:
-        return templates.TemplateResponse("partials/save_error.html", {"request": request, "error": f"Invalid YAML: {e}"})
+        return templates.TemplateResponse(request=request, name="partials/save_error.html", context={"error": f"Invalid YAML: {e}"})
 
 @router.post("/config/restart")
 async def restart_container(request: Request):
@@ -104,7 +103,7 @@ async def restart_container(request: Request):
         # Use simple await if we implemented it properly with asyncio.to_thread, otherwise run in executor
         import asyncio
         await asyncio.to_thread(docker_ctl.restart_container, settings.lavalink_container_name)
-        return templates.TemplateResponse("partials/save_success.html", {"request": request, "message": "Lavalink restarted successfully!"})
+        return templates.TemplateResponse(request=request, name="partials/save_success.html", context={"message": "Lavalink restarted successfully!"})
     except Exception as e:
-        return templates.TemplateResponse("partials/save_error.html", {"request": request, "error": f"Restart failed: {e}"})
+        return templates.TemplateResponse(request=request, name="partials/save_error.html", context={"error": f"Restart failed: {e}"})
 

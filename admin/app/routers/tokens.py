@@ -29,7 +29,6 @@ async def tokens_page(request: Request, hx_request: str | None = Header(default=
         oauth_refresh, pot_token, pot_visitor = None, None, None
 
     context = {
-        "request": request,
         "pot_token_preview": f"{pot_token[:8]}...{pot_token[-8:]}" if pot_token else "None",
         "pot_visitor_preview": visitor_preview(pot_visitor),
         "pot_last_refresh": state.get("pot_last_refresh", "Never"),
@@ -41,9 +40,9 @@ async def tokens_page(request: Request, hx_request: str | None = Header(default=
     }
 
     if hx_request:
-        return templates.TemplateResponse("partials/tokens_content.html", context)
+        return templates.TemplateResponse(request=request, name="partials/tokens_content.html", context=context)
 
-    return templates.TemplateResponse("tokens.html", context)
+    return templates.TemplateResponse(request=request, name="tokens.html", context=context)
 
 
 def visitor_preview(visitor: Optional[str]) -> str:
@@ -59,7 +58,7 @@ async def manual_pot_refresh(request: Request):
         # Long running background task so we don't timeout the request, but we want 
         # to show success. Let's run it inline but potentially it takes 15s.
         await pot.refresh_and_inject()
-        return templates.TemplateResponse("partials/save_success.html", {"request": request, "message": "PoToken refreshed and Lavalink restarted!"})
+        return templates.TemplateResponse(request=request, name="partials/save_success.html", context={"message": "PoToken refreshed and Lavalink restarted!"})
     except Exception as e:
-        return templates.TemplateResponse("partials/save_error.html", {"request": request, "error": f"Refresh failed: {e}"})
+        return templates.TemplateResponse(request=request, name="partials/save_error.html", context={"error": f"Refresh failed: {e}"})
 

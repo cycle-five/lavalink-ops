@@ -26,13 +26,12 @@ async def dashboard(request: Request, hx_request: str | None = Header(default=No
         error = f"Failed to fetch Lavalink data: {str(e)}"
 
     context = {
-        "request": request,
         "info": info,
         "stats": stats,
         "error": error
     }
 
     if hx_request:
-        return templates.TemplateResponse("partials/dashboard_stats.html", context)
+        return templates.TemplateResponse(request=request, name="partials/dashboard_stats.html", context=context)
     
-    return templates.TemplateResponse("dashboard.html", context)
+    return templates.TemplateResponse(request=request, name="dashboard.html", context=context)

@@ -12,7 +12,7 @@ templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 @router.get("/test", response_class=HTMLResponse)
 async def test_page(request: Request):
     """Render the Track Tester page."""
-    return templates.TemplateResponse("test.html", {"request": request})
+    return templates.TemplateResponse(request=request, name="test.html")
 
 @router.post("/test/resolve", response_class=HTMLResponse)
 async def resolve_track(request: Request, identifier: str = Form(...)):
@@ -60,16 +60,14 @@ async def resolve_track(request: Request, identifier: str = Form(...)):
 
         
         context = {
-            "request": request,
             "parsed": parsed_result,
             "raw": str(result)
         }
-        return templates.TemplateResponse("partials/test_result.html", context)
+        return templates.TemplateResponse(request=request, name="partials/test_result.html", context=context)
         
     except Exception as e:
         context = {
-            "request": request,
             "parsed": {"status": "Exception", "message": str(e)},
             "raw": ""
         }
-        return templates.TemplateResponse("partials/test_result.html", context)
+        return templates.TemplateResponse(request=request, name="partials/test_result.html", context=context)
