@@ -1,0 +1,5 @@
+upcloud_api_token = "your-upcloud-api-token-here" 
+region        = "us-nyc1"             # NYC
+plan          = "DEV-2xCPU-4GB"      # 2 vCPU, 4GB RAM
+repo_url      = "https://github.com/cycle-five/lavalink-ops.git"  # Git repository to deploy from
+admin_port    = 8080              # Port on which the admin/service UI will listen
