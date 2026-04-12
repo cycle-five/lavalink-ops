@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from app.dependencies import get_settings, get_http_client, get_state, get_config_lock
-from app.services.yaml_manager import read_config, _set_nested, _write_config_to_disk
+from app.services.yaml_manager import read_config, update_config_field, _set_nested, _write_config_to_disk
 from app.services.docker_ctl import restart_container
 
 
