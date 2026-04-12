@@ -14,8 +14,7 @@ templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 @router.get("/logs", response_class=HTMLResponse)
 async def logs_page(request: Request):
     """Render the log viewer."""
-    context = {"request": request}
-    return templates.TemplateResponse("logs.html", context)
+    return templates.TemplateResponse(request=request, name="logs.html")
 
 @router.get("/logs/stream", response_class=HTMLResponse)
 async def stream_logs(
@@ -55,7 +54,6 @@ async def stream_logs(
         filtered_lines.append(line)
 
     context = {
-        "request": request,
         "logs": filtered_lines
     }
-    return templates.TemplateResponse("partials/log_lines.html", context)
+    return templates.TemplateResponse(request=request, name="partials/log_lines.html", context=context)
