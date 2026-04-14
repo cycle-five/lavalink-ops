@@ -8,6 +8,8 @@ lavalink:
   plugins:
     - dependency: "dev.lavalink.youtube:youtube-plugin:1.18.0"
       repository: "https://maven.lavalink.dev/releases"
+    - dependency: "com.github.topi314.lavasrc:lavasrc-plugin:4.8.1"
+      repository: "https://maven.lavalink.dev/releases"
   server:
     password: "youshallnotpass"
     sources:
@@ -68,6 +70,32 @@ plugins:
       url: "http://127.0.0.1:8001"
       password: "change-me-cipher-token"
       userAgent: "lavalink-ops"
+  # LavaSrc is a plugin that mirrors tracks from other sources (like Spotify) to YouTube.
+  lavasrc:
+    # Provider chain — controls where mirrored tracks get resolved.
+    # Tried in order; %ISRC% is skipped if track lacks one.
+    providers:
+      - "ytsearch:\"%ISRC%\""   # try ISRC match on YouTube first
+      - "ytsearch:%QUERY%"      # fallback to text search
+      # If you set up Deezer, you can prioritize it:
+      # - "dzisrc:%ISRC%"
+      # - "dzsearch:%QUERY%"
+
+    sources:
+      spotify: true
+      applemusic: false   # enable if you get an API token
+      deezer: false        # enable if you have an ARL cookie
+      yandexmusic: false
+      flowerytts: false
+      vkmusic: false
+
+    spotify:
+      clientId: ""
+      clientSecret: ""
+      countryCode: "US"
+      playlistLoadLimit: 6    # pages × 100 tracks each
+      albumLoadLimit: 6       # pages × 50 tracks each
+      # spDc: "your-sp-dc-cookie"  # optional, for lyrics/recommendations
 
 logging:
   file:
