@@ -36,7 +36,13 @@ async def config_page(request: Request):
     pot_visitor = yaml_manager._get_nested(plugins, ["pot", "visitorData"]) or ""
     
     pot_enabled = yaml_manager._get_nested(plugins, ["pot", "token"]) is not None # Best guess enabled
-    
+
+    lavasrc = yaml_manager._get_nested(config_data, ["plugins", "lavasrc"]) or {}
+    spotify_enabled = yaml_manager._get_nested(lavasrc, ["sources", "spotify"])
+    spotify_client_id = yaml_manager._get_nested(lavasrc, ["spotify", "clientId"]) or ""
+    spotify_client_secret = yaml_manager._get_nested(lavasrc, ["spotify", "clientSecret"]) or ""
+    spotify_country_code = yaml_manager._get_nested(lavasrc, ["spotify", "countryCode"]) or "US"
+
     context = {
         "raw_yaml": raw_yaml,
         "password": password,
@@ -45,7 +51,11 @@ async def config_page(request: Request):
         "oauth_refresh": oauth_refresh,
         "pot_token": pot_token,
         "pot_visitor": pot_visitor,
-        "pot_enabled": pot_enabled
+        "pot_enabled": pot_enabled,
+        "spotify_enabled": bool(spotify_enabled),
+        "spotify_client_id": spotify_client_id,
+        "spotify_client_secret": spotify_client_secret,
+        "spotify_country_code": spotify_country_code,
     }
     return templates.TemplateResponse(request=request, name="config.html", context=context)
 
@@ -58,7 +68,11 @@ async def save_form(
     oauth_enabled: bool = Form(False),
     oauth_refresh: str = Form(""),
     pot_token: str = Form(""),
-    pot_visitor: str = Form("")
+    pot_visitor: str = Form(""),
+    spotify_enabled: bool = Form(False),
+    spotify_client_id: str = Form(""),
+    spotify_client_secret: str = Form(""),
+    spotify_country_code: str = Form("US"),
 ):
     try:
         lock = get_config_lock()
@@ -75,6 +89,12 @@ async def save_form(
             if pot_token and pot_visitor:
                 yaml_manager._set_nested(config_data, ["plugins", "youtube", "pot", "token"], pot_token)
                 yaml_manager._set_nested(config_data, ["plugins", "youtube", "pot", "visitorData"], pot_visitor)
+
+            yaml_manager._set_nested(config_data, ["plugins", "lavasrc", "sources", "spotify"], spotify_enabled)
+            yaml_manager._set_nested(config_data, ["plugins", "lavasrc", "spotify", "clientId"], spotify_client_id)
+            yaml_manager._set_nested(config_data, ["plugins", "lavasrc", "spotify", "clientSecret"], spotify_client_secret)
+            if spotify_country_code:
+                yaml_manager._set_nested(config_data, ["plugins", "lavasrc", "spotify", "countryCode"], spotify_country_code)
 
             yaml_manager._write_config_to_disk(config_data, yaml_manager.get_settings().config_path)
 
