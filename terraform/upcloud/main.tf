@@ -9,9 +9,16 @@ terraform {
 
 provider "upcloud" {
   # Credentials via UPCLOUD_USERNAME / UPCLOUD_PASSWORD env vars
+  token = var.upcloud_api_token
 }
 
 # --- Variables ---
+
+variable "upcloud_api_token" {
+  description = "UpCloud API token"
+  type        = string
+  sensitive   = true
+}
 
 variable "zone" {
   description = "UpCloud zone (e.g. us-nyc1, eu-fra1)"
@@ -199,8 +206,8 @@ resource "upcloud_firewall_rules" "lavalink_node" {
     direction              = "out"
     family                 = "IPv4"
     protocol               = "tcp"
-    destination_port_start = "80"
-    destination_port_end   = "80"
+    destination_port_start = "8080"
+    destination_port_end   = "8080"
   }
 
   firewall_rule {
@@ -219,8 +226,8 @@ resource "upcloud_firewall_rules" "lavalink_node" {
     direction              = "out"
     family                 = "IPv6"
     protocol               = "tcp"
-    destination_port_start = "80"
-    destination_port_end   = "80"
+    destination_port_start = "8080"
+    destination_port_end   = "8080"
   }
 
   firewall_rule {
