@@ -200,14 +200,16 @@ resource "upcloud_firewall_rules" "lavalink_node" {
 
   # --- Outbound ---
 
+  # HTTP (80) is needed for apt-get and cross-scheme redirects during
+  # cloud-init. HTTPS (443) for Docker image pulls, YouTube, Spotify, etc.
   firewall_rule {
     comment                = "HTTP out IPv4"
     action                 = "accept"
     direction              = "out"
     family                 = "IPv4"
     protocol               = "tcp"
-    destination_port_start = "8080"
-    destination_port_end   = "8080"
+    destination_port_start = "80"
+    destination_port_end   = "80"
   }
 
   firewall_rule {
@@ -226,8 +228,8 @@ resource "upcloud_firewall_rules" "lavalink_node" {
     direction              = "out"
     family                 = "IPv6"
     protocol               = "tcp"
-    destination_port_start = "8080"
-    destination_port_end   = "8080"
+    destination_port_start = "80"
+    destination_port_end   = "80"
   }
 
   firewall_rule {
@@ -238,6 +240,27 @@ resource "upcloud_firewall_rules" "lavalink_node" {
     protocol               = "tcp"
     destination_port_start = "443"
     destination_port_end   = "443"
+  }
+
+  # NTP for clock sync (systemd-timesyncd / chrony).
+  firewall_rule {
+    comment                = "NTP out IPv4"
+    action                 = "accept"
+    direction              = "out"
+    family                 = "IPv4"
+    protocol               = "udp"
+    destination_port_start = "123"
+    destination_port_end   = "123"
+  }
+
+  firewall_rule {
+    comment                = "NTP out IPv6"
+    action                 = "accept"
+    direction              = "out"
+    family                 = "IPv6"
+    protocol               = "udp"
+    destination_port_start = "123"
+    destination_port_end   = "123"
   }
 
   firewall_rule {
