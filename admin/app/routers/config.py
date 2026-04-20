@@ -35,8 +35,6 @@ async def config_page(request: Request):
     
     pot_token = yaml_manager.get_nested(plugins, ["pot", "token"]) or ""
     pot_visitor = yaml_manager.get_nested(plugins, ["pot", "visitorData"]) or ""
-    
-    pot_enabled = yaml_manager.get_nested(plugins, ["pot", "token"]) is not None # Best guess enabled
 
     lavasrc = yaml_manager.get_nested(config_data, ["plugins", "lavasrc"]) or {}
     spotify_enabled = yaml_manager.get_nested(lavasrc, ["sources", "spotify"])
@@ -52,7 +50,6 @@ async def config_page(request: Request):
         "oauth_refresh": oauth_refresh,
         "pot_token": pot_token,
         "pot_visitor": pot_visitor,
-        "pot_enabled": pot_enabled,
         "spotify_enabled": bool(spotify_enabled),
         "spotify_client_id": spotify_client_id,
         "spotify_client_secret": spotify_client_secret,
