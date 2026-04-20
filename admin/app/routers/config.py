@@ -63,7 +63,6 @@ async def config_page(request: Request):
 @router.post("/config/save-form")
 async def save_form(
     request: Request,
-    password: str = Form(""),
     clients: list[str] = Form([]),
     oauth_enabled: bool = Form(False),
     oauth_refresh: str = Form(""),
@@ -74,12 +73,15 @@ async def save_form(
     spotify_client_secret: str = Form(""),
     spotify_country_code: str = Form("US"),
 ):
+    # Note: lavalink.server.password is intentionally not editable here.
+    # docker-compose injects LAVALINK_SERVER_PASSWORD from .env which always
+    # overrides the YAML value, so a UI edit would silently do nothing.
+    # Rotate it by editing .env and re-running setup.sh.
     try:
         lock = get_config_lock()
         async with lock:
             config_data = await yaml_manager.read_config()
 
-            yaml_manager._set_nested(config_data, ["lavalink", "server", "password"], password)
             yaml_manager._set_nested(config_data, ["plugins", "youtube", "clients"], clients)
             yaml_manager._set_nested(config_data, ["plugins", "youtube", "oauth", "enabled"], oauth_enabled)
 
