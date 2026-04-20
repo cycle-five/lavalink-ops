@@ -1,3 +1,4 @@
+import json
 import os
 from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse
@@ -34,7 +35,7 @@ async def resolve_track(request: Request, identifier: str = Form(...)):
                 "message": data.get("message"),
                 "severity": data.get("severity")
             }
-        elif load_type in ["track", "short"]: # 'short' might be standard in v4 single track? NO, v4 is 'track'
+        elif load_type == "track":
             track = data.get("info", data)
             parsed_result = {
                 "status": "Success",
@@ -61,7 +62,7 @@ async def resolve_track(request: Request, identifier: str = Form(...)):
         
         context = {
             "parsed": parsed_result,
-            "raw": str(result)
+            "raw": json.dumps(result, indent=2, default=str),
         }
         return templates.TemplateResponse(request=request, name="partials/test_result.html", context=context)
         
