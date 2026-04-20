@@ -29,8 +29,8 @@ async def tokens_page(request: Request, hx_request: str | None = Header(default=
         oauth_refresh, pot_token, pot_visitor = None, None, None
 
     context = {
-        "pot_token_preview": f"{pot_token[:8]}...{pot_token[-8:]}" if pot_token else "None",
-        "pot_visitor_preview": visitor_preview(pot_visitor),
+        "pot_token_preview": _mask(pot_token),
+        "pot_visitor_preview": _mask(pot_visitor),
         "pot_last_refresh": state.get("pot_last_refresh", "Never"),
         "pot_history": state.get("pot_history", []),
         "pot_auto_refresh": settings.pot_refresh_enabled,
@@ -45,10 +45,13 @@ async def tokens_page(request: Request, hx_request: str | None = Header(default=
     return templates.TemplateResponse(request=request, name="tokens.html", context=context)
 
 
-def visitor_preview(visitor: Optional[str]) -> str:
-    if not visitor:
+def _mask(value: Optional[str]) -> str:
+    """Render a secret as a fixed-width mask + last 4 chars. Never round-trips the value."""
+    if not value:
         return "None"
-    return f"{visitor[:5]}...{visitor[-5:]}" if len(visitor) > 10 else visitor
+    if len(value) <= 4:
+        return "****"
+    return f"****{value[-4:]}"
 
 
 @router.post("/tokens/refresh-pot")
