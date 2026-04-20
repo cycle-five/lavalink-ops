@@ -4,6 +4,10 @@ class Settings(BaseSettings):
     admin_password: str
     admin_secret_key: str
     admin_port: int = 8080
+    # Set to true when the admin panel is served over HTTPS (reverse proxy,
+    # real TLS on 8080, etc). Leave false for the SSH-tunnel default — a
+    # Secure cookie won't be sent over plain HTTP and you'd be locked out.
+    admin_cookie_secure: bool = False
     
     lavalink_host: str = "lavalink"
     lavalink_port: int = 2333
