@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import secrets
 import time
+from collections import defaultdict, deque
 from contextlib import asynccontextmanager
 
 import httpx
@@ -21,6 +22,28 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 
 SESSION_MAX_AGE_SECONDS = 7 * 86400
+
+LOGIN_WINDOW_SECONDS = 60
+LOGIN_MAX_FAILURES = 5
+_login_failures: dict[str, deque[float]] = defaultdict(lambda: deque(maxlen=LOGIN_MAX_FAILURES))
+
+
+def _login_rate_limited(client_ip: str) -> bool:
+    """True if this IP is locked out. Prunes old entries as a side effect."""
+    now = time.time()
+    window_start = now - LOGIN_WINDOW_SECONDS
+    attempts = _login_failures[client_ip]
+    while attempts and attempts[0] < window_start:
+        attempts.popleft()
+    return len(attempts) >= LOGIN_MAX_FAILURES
+
+
+def _record_login_failure(client_ip: str) -> None:
+    _login_failures[client_ip].append(time.time())
+
+
+def _clear_login_failures(client_ip: str) -> None:
+    _login_failures.pop(client_ip, None)
 
 
 def _sign_session(secret_key: str) -> str:
@@ -134,11 +157,22 @@ async def login_page(request: Request):
 
 @app.post("/do-login")
 async def do_login(request: Request):
+    client_ip = request.client.host if request.client else "unknown"
+
+    if _login_rate_limited(client_ip):
+        return templates.TemplateResponse(
+            request=request,
+            name="login.html",
+            context={"error": f"Too many failed attempts. Try again in {LOGIN_WINDOW_SECONDS}s."},
+            status_code=429,
+        )
+
     form = await request.form()
     password = form.get("password")
-    
+
     settings = get_settings()
-    if password == settings.admin_password:
+    if password and hmac.compare_digest(password, settings.admin_password):
+        _clear_login_failures(client_ip)
         response = RedirectResponse(url="/", status_code=303)
         response.set_cookie(
             key="admin_session",
@@ -148,13 +182,13 @@ async def do_login(request: Request):
             max_age=SESSION_MAX_AGE_SECONDS,
         )
         return response
-        
-    # Login failed
+
+    _record_login_failure(client_ip)
     return templates.TemplateResponse(
         request=request,
         name="login.html",
-        context={"error": "Invalid password"}, 
-        status_code=401
+        context={"error": "Invalid password"},
+        status_code=401,
     )
 
 @app.post("/logout")
