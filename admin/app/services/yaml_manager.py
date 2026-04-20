@@ -18,16 +18,15 @@ async def read_config() -> CommentedMap:
     """Read the configuration YAML file, preserving comments."""
     settings = get_settings()
     yaml = _get_yaml_instance()
-    
-    # We do file I/O synchrnously here, but since it's a small config file
-    # and we protect with a lock during writes, it should be fine.
-    # In a full-blown async app we might use aiofiles.
+
+    # Sync I/O — the config is small and writes are serialized by a lock, so
+    # the cost isn't worth the aiofiles dependency.
     with open(settings.config_path, "r", encoding="utf-8") as f:
         return yaml.load(f)
 
 
-def _write_config_to_disk(data: CommentedMap, config_path: str) -> None:
-    """Internal: write config to disk with backup and validation. Caller must hold lock."""
+def write_config_to_disk(data: CommentedMap, config_path: str) -> None:
+    """Write config with backup, validation, and atomic replace. Caller must hold get_config_lock()."""
     # 1. Create backup
     if os.path.exists(config_path):
         backup_path = f"{config_path}.bak"
@@ -57,10 +56,10 @@ async def write_config(data: CommentedMap) -> None:
     lock = get_config_lock()
 
     async with lock:
-        _write_config_to_disk(data, settings.config_path)
+        write_config_to_disk(data, settings.config_path)
 
 
-def _get_nested(data: dict, path: List[str]) -> Any:
+def get_nested(data: dict, path: List[str]) -> Any:
     current = data
     for key in path:
         if isinstance(current, dict) and key in current:
@@ -70,7 +69,7 @@ def _get_nested(data: dict, path: List[str]) -> Any:
     return current
 
 
-def _set_nested(data: dict, path: List[str], value: Any, create_missing: bool = True) -> None:
+def set_nested(data: dict, path: List[str], value: Any, create_missing: bool = True) -> None:
     current = data
     for key in path[:-1]:
         if key not in current:
@@ -84,14 +83,14 @@ def _set_nested(data: dict, path: List[str], value: Any, create_missing: bool = 
             else:
                 raise TypeError(f"Key '{key}' is not a dictionary in path {path}")
         current = current[key]
-    
+
     current[path[-1]] = value
 
 
 async def get_config_field(path: List[str]) -> Any:
     """Read a specific nested field from the config."""
     data = await read_config()
-    return _get_nested(data, path)
+    return get_nested(data, path)
 
 
 async def update_config_field(path: List[str], value: Any) -> None:
@@ -104,8 +103,8 @@ async def update_config_field(path: List[str], value: Any) -> None:
         with open(settings.config_path, "r", encoding="utf-8") as f:
             data = yaml.load(f)
 
-        _set_nested(data, path, value)
-        _write_config_to_disk(data, settings.config_path)
+        set_nested(data, path, value)
+        write_config_to_disk(data, settings.config_path)
 
 
 async def validate_yaml_string(yaml_str: str) -> CommentedMap:

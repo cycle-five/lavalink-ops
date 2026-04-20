@@ -22,9 +22,9 @@ async def tokens_page(request: Request, hx_request: str | None = Header(default=
     # Read config for current tokens
     try:
         config_data = await yaml_manager.read_config()
-        oauth_refresh = yaml_manager._get_nested(config_data, ["plugins", "youtube", "oauth", "refreshToken"])
-        pot_token = yaml_manager._get_nested(config_data, ["plugins", "youtube", "pot", "token"])
-        pot_visitor = yaml_manager._get_nested(config_data, ["plugins", "youtube", "pot", "visitorData"])
+        oauth_refresh = yaml_manager.get_nested(config_data, ["plugins", "youtube", "oauth", "refreshToken"])
+        pot_token = yaml_manager.get_nested(config_data, ["plugins", "youtube", "pot", "token"])
+        pot_visitor = yaml_manager.get_nested(config_data, ["plugins", "youtube", "pot", "visitorData"])
     except Exception:
         oauth_refresh, pot_token, pot_visitor = None, None, None
 
