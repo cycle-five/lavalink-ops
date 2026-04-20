@@ -55,11 +55,16 @@
                 <div>
                     <h3 class="text-lg font-medium leading-6 text-white mb-4">Lavalink Settings</h3>
 
-                    <div class="space-y-4">
+                    <div class="space-y-4" x-data="{ reveal: false }">
                         <div>
                             <label class="block text-sm font-medium text-gray-300">Server Password</label>
-                            <input type="text" value="{{ password }}" readonly
-                                   class="mt-1 block w-full bg-gray-900 border border-gray-600 rounded-md py-2 px-3 text-gray-400 font-mono text-xs focus:outline-none cursor-not-allowed">
+                            <div class="mt-1 flex gap-2">
+                                <input :type="reveal ? 'text' : 'password'" value="{{ password }}" readonly autocomplete="off"
+                                       class="flex-1 bg-gray-900 border border-gray-600 rounded-md py-2 px-3 text-gray-400 font-mono text-xs focus:outline-none cursor-not-allowed">
+                                <button type="button" @click="reveal = !reveal"
+                                        class="bg-gray-700 hover:bg-gray-600 text-gray-200 text-xs font-medium px-3 rounded border border-gray-600"
+                                        x-text="reveal ? 'Hide' : 'Reveal'"></button>
+                            </div>
                             <p class="text-xs text-gray-500 mt-1">Managed by <code class="bg-gray-900 px-1 rounded">.env</code> (<code class="bg-gray-900 px-1 rounded">LAVALINK_PASSWORD</code>). Rotate there and re-run <code class="bg-gray-900 px-1 rounded">setup.sh</code>.</p>
                         </div>
                     </div>
