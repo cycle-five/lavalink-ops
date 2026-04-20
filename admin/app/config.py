@@ -9,15 +9,18 @@ class Settings(BaseSettings):
     # Secure cookie won't be sent over plain HTTP and you'd be locked out.
     admin_cookie_secure: bool = False
     
-    lavalink_host: str = "lavalink"
+    # Host networking is the supported deployment, so services colocate on
+    # 127.0.0.1. docker-compose still sets these explicitly; the defaults
+    # are here as a safety net.
+    lavalink_host: str = "127.0.0.1"
     lavalink_port: int = 2333
     lavalink_password: str
     lavalink_container_name: str = "lavalink"
-    
-    cipher_host: str = "yt-cipher"
+
+    cipher_host: str = "127.0.0.1"
     cipher_port: int = 8001
-    
-    bgutil_host: str = "bgutil-pot"
+
+    bgutil_host: str = "127.0.0.1"
     bgutil_port: int = 4416
     
     pot_refresh_enabled: bool = True
