@@ -22,8 +22,9 @@ RUN uv pip install --system --no-cache -r pyproject.toml
 # Copy application code
 COPY app/ app/
 
-# Non-root user (note: needs docker socket access, so add to docker group at runtime or use socket proxy)
-RUN useradd -m -r appuser
+# Non-root user. UID/GID are pinned so the compose init container can chown
+# /config and /state to match — keep these in sync with docker-compose.yml.
+RUN useradd -m -u 1001 -U appuser
 USER appuser
 
 EXPOSE 8080

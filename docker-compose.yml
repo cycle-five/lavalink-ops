@@ -1,13 +1,20 @@
 services:
-  # Init container — creates data directories on first run
+  # Init container — creates data directories and fixes ownership so the
+  # non-root containers can write their bind-mounted paths on first run.
+  # UID 322 = Lavalink container's built-in user.
+  # UID 1001 = admin container's appuser (see admin/Dockerfile, keep in sync).
   init:
     image: busybox:latest
     container_name: lavalink-init
     restart: "no"
     volumes:
       - ./data:/data
+      - ./config:/config
     command: >
-      sh -c "mkdir -p /data/lavalink/plugins /data/lavalink/logs /data/admin && chown -R 322:322 /data/lavalink && echo 'Data directories ready'"
+      sh -c "mkdir -p /data/lavalink/plugins /data/lavalink/logs /data/admin &&
+             chown -R 322:322 /data/lavalink &&
+             chown -R 1001:1001 /data/admin /config &&
+             echo 'Data directories ready'"
 
   lavalink:
     image: ghcr.io/lavalink-devs/lavalink:4
