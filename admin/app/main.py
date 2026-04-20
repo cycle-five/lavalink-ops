@@ -178,6 +178,7 @@ async def do_login(request: Request):
             key="admin_session",
             value=_sign_session(settings.admin_secret_key),
             httponly=True,
+            secure=settings.admin_cookie_secure,
             samesite="lax",
             max_age=SESSION_MAX_AGE_SECONDS,
         )
