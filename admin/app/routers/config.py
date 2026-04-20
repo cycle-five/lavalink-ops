@@ -3,7 +3,7 @@ from fastapi import APIRouter, Request, Form
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from app.dependencies import get_config_lock
+from app.dependencies import get_config_lock, get_settings
 from app.services import yaml_manager, docker_ctl
 
 router = APIRouter()
@@ -14,8 +14,9 @@ templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 @router.get("/config", response_class=HTMLResponse)
 async def config_page(request: Request):
     """Render the configuration page."""
-    # We will load the yaml explicitly for the raw editor
-    settings = yaml_manager.get_settings()
+    # Load the raw YAML text for the raw-editor tab. read_config() further
+    # down re-parses it — different representations, same file.
+    settings = get_settings()
     try:
         with open(settings.config_path, "r", encoding="utf-8") as f:
             raw_yaml = f.read()
@@ -23,25 +24,25 @@ async def config_page(request: Request):
         raw_yaml = ""
         
     config_data = await yaml_manager.read_config()
-    password = yaml_manager._get_nested(config_data, ["lavalink", "server", "password"]) or ""
+    password = yaml_manager.get_nested(config_data, ["lavalink", "server", "password"]) or ""
     
-    plugins = yaml_manager._get_nested(config_data, ["plugins", "youtube"]) or {}
+    plugins = yaml_manager.get_nested(config_data, ["plugins", "youtube"]) or {}
     
     clients = plugins.get("clients", ["MUSIC", "WEB", "WEBEMBEDDED", "TVHTML5EMBEDDED"])
     
-    oauth_enabled = yaml_manager._get_nested(plugins, ["oauth", "enabled"])
-    oauth_refresh = yaml_manager._get_nested(plugins, ["oauth", "refreshToken"]) or ""
+    oauth_enabled = yaml_manager.get_nested(plugins, ["oauth", "enabled"])
+    oauth_refresh = yaml_manager.get_nested(plugins, ["oauth", "refreshToken"]) or ""
     
-    pot_token = yaml_manager._get_nested(plugins, ["pot", "token"]) or ""
-    pot_visitor = yaml_manager._get_nested(plugins, ["pot", "visitorData"]) or ""
+    pot_token = yaml_manager.get_nested(plugins, ["pot", "token"]) or ""
+    pot_visitor = yaml_manager.get_nested(plugins, ["pot", "visitorData"]) or ""
     
-    pot_enabled = yaml_manager._get_nested(plugins, ["pot", "token"]) is not None # Best guess enabled
+    pot_enabled = yaml_manager.get_nested(plugins, ["pot", "token"]) is not None # Best guess enabled
 
-    lavasrc = yaml_manager._get_nested(config_data, ["plugins", "lavasrc"]) or {}
-    spotify_enabled = yaml_manager._get_nested(lavasrc, ["sources", "spotify"])
-    spotify_client_id = yaml_manager._get_nested(lavasrc, ["spotify", "clientId"]) or ""
-    spotify_client_secret = yaml_manager._get_nested(lavasrc, ["spotify", "clientSecret"]) or ""
-    spotify_country_code = yaml_manager._get_nested(lavasrc, ["spotify", "countryCode"]) or "US"
+    lavasrc = yaml_manager.get_nested(config_data, ["plugins", "lavasrc"]) or {}
+    spotify_enabled = yaml_manager.get_nested(lavasrc, ["sources", "spotify"])
+    spotify_client_id = yaml_manager.get_nested(lavasrc, ["spotify", "clientId"]) or ""
+    spotify_client_secret = yaml_manager.get_nested(lavasrc, ["spotify", "clientSecret"]) or ""
+    spotify_country_code = yaml_manager.get_nested(lavasrc, ["spotify", "countryCode"]) or "US"
 
     context = {
         "raw_yaml": raw_yaml,
@@ -82,23 +83,23 @@ async def save_form(
         async with lock:
             config_data = await yaml_manager.read_config()
 
-            yaml_manager._set_nested(config_data, ["plugins", "youtube", "clients"], clients)
-            yaml_manager._set_nested(config_data, ["plugins", "youtube", "oauth", "enabled"], oauth_enabled)
+            yaml_manager.set_nested(config_data, ["plugins", "youtube", "clients"], clients)
+            yaml_manager.set_nested(config_data, ["plugins", "youtube", "oauth", "enabled"], oauth_enabled)
 
             if oauth_refresh:
-                yaml_manager._set_nested(config_data, ["plugins", "youtube", "oauth", "refreshToken"], oauth_refresh)
+                yaml_manager.set_nested(config_data, ["plugins", "youtube", "oauth", "refreshToken"], oauth_refresh)
 
             if pot_token and pot_visitor:
-                yaml_manager._set_nested(config_data, ["plugins", "youtube", "pot", "token"], pot_token)
-                yaml_manager._set_nested(config_data, ["plugins", "youtube", "pot", "visitorData"], pot_visitor)
+                yaml_manager.set_nested(config_data, ["plugins", "youtube", "pot", "token"], pot_token)
+                yaml_manager.set_nested(config_data, ["plugins", "youtube", "pot", "visitorData"], pot_visitor)
 
-            yaml_manager._set_nested(config_data, ["plugins", "lavasrc", "sources", "spotify"], spotify_enabled)
-            yaml_manager._set_nested(config_data, ["plugins", "lavasrc", "spotify", "clientId"], spotify_client_id)
-            yaml_manager._set_nested(config_data, ["plugins", "lavasrc", "spotify", "clientSecret"], spotify_client_secret)
+            yaml_manager.set_nested(config_data, ["plugins", "lavasrc", "sources", "spotify"], spotify_enabled)
+            yaml_manager.set_nested(config_data, ["plugins", "lavasrc", "spotify", "clientId"], spotify_client_id)
+            yaml_manager.set_nested(config_data, ["plugins", "lavasrc", "spotify", "clientSecret"], spotify_client_secret)
             if spotify_country_code:
-                yaml_manager._set_nested(config_data, ["plugins", "lavasrc", "spotify", "countryCode"], spotify_country_code)
+                yaml_manager.set_nested(config_data, ["plugins", "lavasrc", "spotify", "countryCode"], spotify_country_code)
 
-            yaml_manager._write_config_to_disk(config_data, yaml_manager.get_settings().config_path)
+            yaml_manager.write_config_to_disk(config_data, get_settings().config_path)
 
         return templates.TemplateResponse(request=request, name="partials/save_success.html", context={"message": "Config saved successfully!"})
     except Exception as e:

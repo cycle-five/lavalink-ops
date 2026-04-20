@@ -2,7 +2,7 @@ import logging
 from datetime import datetime
 
 from app.dependencies import get_settings, get_http_client, get_state, get_config_lock
-from app.services.yaml_manager import read_config, update_config_field, _set_nested, _write_config_to_disk
+from app.services.yaml_manager import read_config, set_nested, write_config_to_disk
 from app.services.docker_ctl import restart_container
 
 logger = logging.getLogger(__name__)
@@ -74,9 +74,9 @@ async def refresh_and_inject() -> None:
         lock = get_config_lock()
         async with lock:
             config_data = await read_config()
-            _set_nested(config_data, ["plugins", "youtube", "pot", "token"], po_token)
-            _set_nested(config_data, ["plugins", "youtube", "pot", "visitorData"], visitor_data)
-            _write_config_to_disk(config_data, settings.config_path)
+            set_nested(config_data, ["plugins", "youtube", "pot", "token"], po_token)
+            set_nested(config_data, ["plugins", "youtube", "pot", "visitorData"], visitor_data)
+            write_config_to_disk(config_data, settings.config_path)
 
         # 4. Restart container
         logger.info("Restarting Lavalink to apply new PoToken")

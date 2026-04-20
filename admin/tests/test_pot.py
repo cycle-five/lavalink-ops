@@ -32,8 +32,8 @@ async def test_generate_token(mock_httpx_client):
 @patch("app.services.pot.get_settings")
 @patch("app.services.pot.restart_container")
 @patch("app.services.pot.get_state")
-@patch("app.services.pot._write_config_to_disk")
-@patch("app.services.pot._set_nested")
+@patch("app.services.pot.write_config_to_disk")
+@patch("app.services.pot.set_nested")
 @patch("app.services.pot.read_config", new_callable=AsyncMock)
 async def test_refresh_and_inject(mock_read_config, mock_set_nested, mock_write, mock_get_state, mock_restart, mock_get_settings, mock_httpx_client):
     # Settings
@@ -60,7 +60,7 @@ async def test_refresh_and_inject(mock_read_config, mock_set_nested, mock_write,
     
     # Verify state logged the success
     from unittest.mock import ANY
-    # Two _set_nested calls (token + visitorData)
+    # Two set_nested calls (token + visitorData)
     assert mock_set_nested.call_count == 2
     mock_write.assert_called_once_with({}, "/fake/path.yml")
     mock_restart.assert_called_once_with("test-lavalink")
