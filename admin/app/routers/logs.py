@@ -11,6 +11,9 @@ router = APIRouter()
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
+MAX_LOG_TAIL = 1000
+
+
 @router.get("/logs", response_class=HTMLResponse)
 async def logs_page(request: Request):
     """Render the log viewer."""
@@ -20,7 +23,7 @@ async def logs_page(request: Request):
 async def stream_logs(
     request: Request,
     filter_type: str = Query("all"),
-    tail: int = Query(100)
+    tail: int = Query(100, ge=1, le=MAX_LOG_TAIL),
 ):
     """
     Return recent log lines as an HTMX partial.

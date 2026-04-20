@@ -64,6 +64,10 @@ async def start_log_watcher():
                     state.delete("oauth_device_code")
                     state.set("oauth_success", datetime.now().isoformat())
                     logger.info("OAuth success detected")
+
+            # Clean EOF on the stream (e.g., Lavalink restarted). Pause before
+            # reconnecting so a crash-looping container doesn't hot-spin us.
+            await asyncio.sleep(5)
         except Exception:
             logger.exception("Log watcher failed, retrying in 10s")
             await asyncio.sleep(10)
