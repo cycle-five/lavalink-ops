@@ -65,14 +65,22 @@ services:
 
   # Called only by the admin panel via 127.0.0.1:4416. No auth on this service
   # upstream — keep it off public interfaces.
+  # Version pinned: jim60105/bgutil-pot:latest moves; v0.8.1 is what we tested.
+  # working_dir=/tmp because the image sets WORKDIR=/ and runs as UID 1001,
+  # so the botguard code's ./snapshot mkdir would otherwise fail with
+  # "Permission denied" and trigger an abort on the error path (v0.8.1 bug).
+  # HOME=/tmp gives any $HOME/.cache lookups a writable landing spot too.
   bgutil-pot:
-    image: jim60105/bgutil-pot
+    image: jim60105/bgutil-pot:v0.8.1
     container_name: bgutil-pot
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
     ports:
       - "127.0.0.1:4416:4416"
+    working_dir: /tmp
+    environment:
+      - HOME=/tmp
     command: [ "server", "--host", "0.0.0.0", "--port", "4416" ]
     healthcheck:
       test: [ "CMD-SHELL", "wget -qO- http://127.0.0.1:4416/ping || exit 1" ]
