@@ -126,6 +126,16 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Lavalink Ops Admin", lifespan=lifespan)
 
+# When behind a reverse proxy, rewrite request.client from X-Forwarded-For so
+# per-IP rate limiting keys on the real client instead of the proxy. Must be
+# installed before BasicAuthMiddleware (outer = runs first on the request).
+_settings_for_boot = get_settings()
+if _settings_for_boot.admin_trust_proxy:
+    from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+
+    trusted = _settings_for_boot.admin_trusted_proxy_ips
+    app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=trusted)
+
 # Setup Templates and Static Files
 import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
