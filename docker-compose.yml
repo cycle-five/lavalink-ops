@@ -59,13 +59,33 @@ services:
       timeout: 15s
       retries: 3
 
+  # Scoped Docker API gateway — the admin only needs container list/inspect/logs/restart.
+  # Exposing /var/run/docker.sock directly would let any admin-panel RCE own the host.
+  # NOTE: this service binds TCP 2375 on all host interfaces (tecnativa/docker-socket-proxy
+  # has no bind-address knob). Ensure your host firewall blocks 2375 externally — the
+  # Terraform configs in this repo already do.
+  dockerproxy:
+    image: tecnativa/docker-socket-proxy:0.3.0
+    container_name: lavalink-dockerproxy
+    restart: unless-stopped
+    network_mode: "host"
+    environment:
+      - CONTAINERS=1
+      - POST=1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://127.0.0.1:2375/_ping || exit 1" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
   admin:
     build:
       context: ./admin
       dockerfile: Dockerfile
       network: host
     container_name: lavalink-admin
-    user: root
     restart: unless-stopped
     network_mode: "host"
     environment:
@@ -84,13 +104,15 @@ services:
       - LAVALINK_CONTAINER_NAME=${LAVALINK_CONTAINER_NAME:-lavalink}
       - CONFIG_PATH=/config/application.yml
       - STATE_PATH=/state/state.json
+      - DOCKER_HOST=tcp://127.0.0.1:2375
     volumes:
       - ./config:/config
       - ./data/admin:/state
-      - /var/run/docker.sock:/var/run/docker.sock:ro
     depends_on:
       init:
         condition: service_completed_successfully
+      dockerproxy:
+        condition: service_started
       lavalink:
         condition: service_started
       yt-cipher:
