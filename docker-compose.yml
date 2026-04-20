@@ -41,27 +41,33 @@ services:
       yt-cipher:
         condition: service_started
 
+  # Called only by Lavalink (host net) via 127.0.0.1:8001. Bridge + loopback
+  # publish keeps the cipher API off public interfaces if the firewall drifts.
   yt-cipher:
     image: ghcr.io/kikkia/yt-cipher:master
     container_name: yt-cipher
     restart: unless-stopped
-    network_mode: "host"
+    ports:
+      - "127.0.0.1:8001:8001"
     environment:
       - API_TOKEN=${CIPHER_API_TOKEN:-change-me-cipher-token}
     healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://localhost:8001/ || exit 1" ]
+      test: [ "CMD-SHELL", "wget -qO- http://127.0.0.1:8001/ || exit 1" ]
       interval: 60s
       timeout: 10s
       retries: 3
 
+  # Called only by the admin panel via 127.0.0.1:4416. No auth on this service
+  # upstream — keep it off public interfaces.
   bgutil-pot:
     image: jim60105/bgutil-pot
     container_name: bgutil-pot
     restart: unless-stopped
-    network_mode: "host"
+    ports:
+      - "127.0.0.1:4416:4416"
     command: [ "server", "--host", "0.0.0.0", "--port", "4416" ]
     healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://localhost:4416/ping || exit 1" ]
+      test: [ "CMD-SHELL", "wget -qO- http://127.0.0.1:4416/ping || exit 1" ]
       interval: 60s
       timeout: 15s
       retries: 3
@@ -99,6 +105,7 @@ services:
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-change-me-admin}
       - ADMIN_SECRET_KEY=${ADMIN_SECRET_KEY:-change-me-session-secret}
       - ADMIN_PORT=${ADMIN_PORT:-8080}
+      - ADMIN_BIND_HOST=${ADMIN_BIND_HOST:-127.0.0.1}
       - ADMIN_COOKIE_SECURE=${ADMIN_COOKIE_SECURE:-false}
       - ADMIN_TRUST_PROXY=${ADMIN_TRUST_PROXY:-false}
       - ADMIN_TRUSTED_PROXY_IPS=${ADMIN_TRUSTED_PROXY_IPS:-127.0.0.1}
