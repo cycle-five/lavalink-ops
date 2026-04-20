@@ -34,11 +34,16 @@ _login_failures: dict[str, deque[float]] = defaultdict(lambda: deque(maxlen=LOGI
 
 def _login_rate_limited(client_ip: str) -> bool:
     """True if this IP is locked out. Prunes old entries as a side effect."""
+    if client_ip not in _login_failures:
+        return False
     now = time.time()
     window_start = now - LOGIN_WINDOW_SECONDS
     attempts = _login_failures[client_ip]
     while attempts and attempts[0] < window_start:
         attempts.popleft()
+    if not attempts:
+        _login_failures.pop(client_ip, None)
+        return False
     return len(attempts) >= LOGIN_MAX_FAILURES
 
 
@@ -72,7 +77,10 @@ def _verify_session(cookie_value: str, secret_key: str) -> bool:
     if not hmac.compare_digest(sig, expected_sig):
         return False
 
-    return (time.time() - issued_at) < SESSION_MAX_AGE_SECONDS
+    # Reject future-dated tokens too — clock skew could otherwise produce a
+    # "valid for a very long time" window if a token was minted ahead of time.
+    age = time.time() - issued_at
+    return 0 <= age < SESSION_MAX_AGE_SECONDS
 
 scheduler = AsyncIOScheduler()
 
