@@ -29,4 +29,6 @@ USER appuser
 
 EXPOSE 8080
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+# Shell form so ADMIN_BIND_HOST / ADMIN_PORT from the env are honored. `exec`
+# replaces the shell so uvicorn receives SIGTERM directly.
+CMD ["sh", "-c", "exec uvicorn app.main:app --host ${ADMIN_BIND_HOST:-127.0.0.1} --port ${ADMIN_PORT:-8080}"]
