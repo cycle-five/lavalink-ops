@@ -1,10 +1,14 @@
 import asyncio
 import hashlib
 import hmac
+import logging
 import secrets
 import time
 from collections import defaultdict, deque
 from contextlib import asynccontextmanager
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+logger = logging.getLogger(__name__)
 
 import httpx
 from fastapi import FastAPI, Request
@@ -89,7 +93,7 @@ async def lifespan(app: FastAPI):
             id='pot_refresh'
         )
         scheduler.start()
-        print(f"Started scheduler for pot refresh every {settings.pot_refresh_interval_hours}h")
+        logger.info("Started scheduler for pot refresh every %sh", settings.pot_refresh_interval_hours)
 
     # Start the log watcher background task
     from app.services.log_watcher import start_log_watcher

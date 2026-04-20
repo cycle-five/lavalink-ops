@@ -1,8 +1,11 @@
+import logging
 from datetime import datetime
 
 from app.dependencies import get_settings, get_http_client, get_state, get_config_lock
 from app.services.yaml_manager import read_config, update_config_field, _set_nested, _write_config_to_disk
 from app.services.docker_ctl import restart_container
+
+logger = logging.getLogger(__name__)
 
 
 async def is_healthy() -> bool:
@@ -56,15 +59,17 @@ async def refresh_and_inject() -> None:
     history = state.get("pot_history", [])
     
     try:
-        print("Starting PoToken refresh cycle...")
+        logger.info("Starting PoToken refresh cycle")
         # 1. Generate token
         data = await generate_token()
-        
+
         po_token = data.get("poToken")
         visitor_data = data.get("visitorData")
         if not po_token or not visitor_data:
-            raise ValueError(f"Invalid response from bgutil-pot: {data}")
-        
+            # Intentionally do NOT include `data` — the body may contain
+            # partial tokens we don't want landing in logs.
+            raise ValueError("bgutil returned an incomplete response (missing poToken or visitorData)")
+
         # 2 & 3. Lock + Update both fields atomically
         lock = get_config_lock()
         async with lock:
@@ -72,27 +77,25 @@ async def refresh_and_inject() -> None:
             _set_nested(config_data, ["plugins", "youtube", "pot", "token"], po_token)
             _set_nested(config_data, ["plugins", "youtube", "pot", "visitorData"], visitor_data)
             _write_config_to_disk(config_data, settings.config_path)
-        
+
         # 4. Restart container
-        # Note: the prompt asks to restart Lavalink, we use docker SDK block=True
-        print("Restarting Lavalink to apply new PoToken...")
+        logger.info("Restarting Lavalink to apply new PoToken")
         from asyncio import to_thread
         await to_thread(restart_container, settings.lavalink_container_name)
-        
+
         # 5. Log success
         record = {
             "timestamp": datetime.now().isoformat(),
             "status": "success",
             "message": "Rotated successfully"
         }
-        
+
     except Exception as e:
-        print(f"PoToken refresh failed: {e}")
-        # Log failure
+        logger.exception("PoToken refresh failed")
         record = {
             "timestamp": datetime.now().isoformat(),
             "status": "error",
-            "message": str(e)
+            "message": f"{type(e).__name__}: {e}"
         }
     
     # Update history in state (keep last 10)

@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import re
 from collections import deque
 from datetime import datetime
@@ -6,6 +7,7 @@ from datetime import datetime
 from app.dependencies import get_settings, get_state
 from app.services.docker_ctl import get_container
 
+logger = logging.getLogger(__name__)
 
 # Ring buffer for recent logs, accessible via routers
 RECENT_LOGS = deque(maxlen=500)
@@ -56,14 +58,14 @@ async def start_log_watcher():
                     code = match.group(1)
                     state.set("oauth_device_code", code)
                     state.set("oauth_timestamp", datetime.now().isoformat())
-                    print(f"Log_watcher: Found OAuth code {code}")
-                    
+                    logger.info("Found OAuth device code in Lavalink logs")
+
                 if oauth_success_pattern.search(line):
                     state.delete("oauth_device_code")
                     state.set("oauth_success", datetime.now().isoformat())
-                    print("Log_watcher: OAuth success detected")
-        except Exception as e:
-            print(f"Log watcher failed: {e}. Retrying in 10s...")
+                    logger.info("OAuth success detected")
+        except Exception:
+            logger.exception("Log watcher failed, retrying in 10s")
             await asyncio.sleep(10)
 
 def _get_next_chunk(stream):
