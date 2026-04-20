@@ -78,8 +78,12 @@ scheduler = AsyncIOScheduler()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup actions
-    client = httpx.AsyncClient(timeout=10.0)
+    # Startup actions — cap the pool so a stalled upstream (Lavalink, yt-cipher,
+    # bgutil) can't exhaust file descriptors while retries pile up.
+    client = httpx.AsyncClient(
+        timeout=10.0,
+        limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
+    )
     set_http_client(client)
     
     settings = get_settings()
