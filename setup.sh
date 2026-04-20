@@ -94,11 +94,15 @@ EOF
     log "Generated .env with fresh secrets"
 
     # --- Sync secrets into application.yml ---
-    # Using -i.bak is more portable for sed (works on GNU/Linux and macOS/BSD)
-    # and replacing the unique placeholder values is more robust than matching the whole line.
-    sed -i.bak \
-        -e "s/youshallnotpass/${LAVALINK_PASSWORD}/" \
-        -e "s/change-me-cipher-token/${CIPHER_API_TOKEN}/" \
+    # Match by key+indentation, not by the current (possibly-already-rotated)
+    # value, so re-running setup.sh with a fresh .env actually updates the YAML.
+    # The two password lines are disambiguated by leading whitespace:
+    #   lavalink.server.password       → 4 spaces
+    #   plugins.youtube.remoteCipher.password → 6 spaces
+    # Generated secrets are alphanumeric, so no sed-metachar escaping needed.
+    sed -i.bak -E \
+        -e "s|^(    password:[[:space:]]*)\".*\"|\1\"${LAVALINK_PASSWORD}\"|" \
+        -e "s|^(      password:[[:space:]]*)\".*\"|\1\"${CIPHER_API_TOKEN}\"|" \
         "$CONFIG_FILE"
     rm "${CONFIG_FILE}.bak"
 
