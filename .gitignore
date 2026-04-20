@@ -10,7 +10,8 @@ __pycache__/
 *.tmp
 *.tfstate
 *.tfstate.backup
-.terraform/
+.terraform
+out.plan
 *.tfvars
 !*.tfvars.example
 .vscode
