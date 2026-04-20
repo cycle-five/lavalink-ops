@@ -7,6 +7,8 @@ services:
     image: busybox:latest
     container_name: lavalink-init
     restart: "no"
+    security_opt:
+      - no-new-privileges:true
     volumes:
       - ./data:/data
       - ./config:/config
@@ -21,6 +23,8 @@ services:
     container_name: ${LAVALINK_CONTAINER_NAME:-lavalink}
     restart: unless-stopped
     network_mode: "host"
+    security_opt:
+      - no-new-privileges:true
     environment:
       - _JAVA_OPTIONS=${LAVALINK_JAVA_OPTS:--Xmx512M}
       - SERVER_PORT=${LAVALINK_PORT:-2333}
@@ -47,6 +51,8 @@ services:
     image: ghcr.io/kikkia/yt-cipher:master
     container_name: yt-cipher
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     ports:
       - "127.0.0.1:8001:8001"
     environment:
@@ -63,6 +69,8 @@ services:
     image: jim60105/bgutil-pot
     container_name: bgutil-pot
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     ports:
       - "127.0.0.1:4416:4416"
     command: [ "server", "--host", "0.0.0.0", "--port", "4416" ]
@@ -80,6 +88,8 @@ services:
     image: tecnativa/docker-socket-proxy:0.3.0
     container_name: lavalink-dockerproxy
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     ports:
       - "127.0.0.1:2375:2375"
     environment:
@@ -101,7 +111,18 @@ services:
     container_name: lavalink-admin
     restart: unless-stopped
     network_mode: "host"
+    # appuser (UID 1001) has no privilege escalation paths; cap_drop: ALL
+    # removes every Linux capability; read_only filesystem with a tmpfs for
+    # /tmp keeps the container immutable at runtime. Bind mounts stay writable.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
     environment:
+      - PYTHONDONTWRITEBYTECODE=1
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-change-me-admin}
       - ADMIN_SECRET_KEY=${ADMIN_SECRET_KEY:-change-me-session-secret}
       - ADMIN_PORT=${ADMIN_PORT:-8080}
