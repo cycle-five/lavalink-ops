@@ -1,6 +1,8 @@
 import asyncio
 import hashlib
 import hmac
+import secrets
+import time
 from contextlib import asynccontextmanager
 
 import httpx
@@ -18,15 +20,32 @@ from app.routers import dashboard, config, health, tokens, logs, test
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 
+SESSION_MAX_AGE_SECONDS = 7 * 86400
+
+
 def _sign_session(secret_key: str) -> str:
-    """Create an HMAC-signed session token."""
-    return hmac.new(secret_key.encode(), b"admin_session", hashlib.sha256).hexdigest()
+    """Mint a fresh session token: issued_at.nonce.hmac(issued_at.nonce)."""
+    issued_at = int(time.time())
+    nonce = secrets.token_hex(16)
+    payload = f"{issued_at}.{nonce}"
+    sig = hmac.new(secret_key.encode(), payload.encode(), hashlib.sha256).hexdigest()
+    return f"{payload}.{sig}"
 
 
 def _verify_session(cookie_value: str, secret_key: str) -> bool:
-    """Verify an HMAC-signed session cookie."""
-    expected = _sign_session(secret_key)
-    return hmac.compare_digest(cookie_value, expected)
+    """Verify the HMAC and reject expired tokens."""
+    try:
+        issued_at_str, nonce, sig = cookie_value.split(".", 2)
+        issued_at = int(issued_at_str)
+    except (ValueError, AttributeError):
+        return False
+
+    payload = f"{issued_at_str}.{nonce}"
+    expected_sig = hmac.new(secret_key.encode(), payload.encode(), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(sig, expected_sig):
+        return False
+
+    return (time.time() - issued_at) < SESSION_MAX_AGE_SECONDS
 
 scheduler = AsyncIOScheduler()
 
@@ -126,7 +145,7 @@ async def do_login(request: Request):
             value=_sign_session(settings.admin_secret_key),
             httponly=True,
             samesite="lax",
-            max_age=86400 * 7,  # 7 days
+            max_age=SESSION_MAX_AGE_SECONDS,
         )
         return response
         
