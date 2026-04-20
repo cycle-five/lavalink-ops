@@ -8,6 +8,14 @@ class Settings(BaseSettings):
     # real TLS on 8080, etc). Leave false for the SSH-tunnel default — a
     # Secure cookie won't be sent over plain HTTP and you'd be locked out.
     admin_cookie_secure: bool = False
+
+    # Trust X-Forwarded-For / X-Forwarded-Proto when the admin runs behind a
+    # reverse proxy. Required for accurate per-IP rate limiting in that
+    # deployment. admin_trusted_proxy_ips must list every proxy hop between
+    # the client and this service (comma-separated); otherwise clients can
+    # spoof their apparent IP.
+    admin_trust_proxy: bool = False
+    admin_trusted_proxy_ips: str = "127.0.0.1"
     
     # Host networking is the supported deployment, so services colocate on
     # 127.0.0.1. docker-compose still sets these explicitly; the defaults
