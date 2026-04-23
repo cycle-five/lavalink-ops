@@ -48,6 +48,36 @@ The admin panel manages the lifecycle of all three.
 
 See [DESIGN.md](DESIGN.md) for the full architecture document.
 
+## Health & Monitoring
+
+The admin panel exposes JSON probes for external monitors (CloudWatch, Uptime
+Kuma, Pingdom, etc). These bypass the login cookie so a monitor can scrape
+them, but they only return service status — no credentials or config.
+
+| Endpoint | Returns |
+|----------|---------|
+| `GET /healthz` | Aggregate. 200 if Lavalink is up; 503 otherwise. Body lists per-service state. |
+| `GET /healthz/lavalink` | 200/503 for Lavalink only. |
+| `GET /healthz/cipher` | 200/503 for yt-cipher. |
+| `GET /healthz/pot` | 200/503 for bgutil-pot. |
+
+Example body:
+
+```json
+{"status":"ok","services":{"lavalink":"ok","cipher":"ok","pot":"down"},"checked_at":"2026-04-23T02:30:00+00:00"}
+```
+
+`cipher` and `pot` are reported but advisory — they can flap without flipping
+the aggregate to 503, since Lavalink can serve non-YouTube sources without
+them. If you need either to gate alerts, scrape its dedicated endpoint.
+
+The HTML dashboard at `/health` is unchanged and still requires login.
+
+> **Public exposure:** these endpoints leak that the stack exists and which
+> services run. Fine for the SSH-tunnel default (loopback only). If you put
+> admin behind a public reverse proxy, scope `/healthz*` to your monitor's IP
+> at the proxy, otherwise you're broadcasting your topology.
+
 ## Security Notes
 
 - **Never expose the admin panel to the public internet** without a reverse proxy + auth

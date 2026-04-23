@@ -86,7 +86,7 @@ A self-hosted Lavalink audio node with YouTube anti-detection, automated token l
 **P0 — MVP**:
 1. **Dashboard**: Live stats from Lavalink REST API (players, memory, CPU, uptime). Polls `/v4/stats` and `/v4/info`.
 2. **Config Editor**: YAML editor with schema validation. Edit `application.yml` with a form-based UI for common fields (password, clients list, OAuth toggle, cipher URL, PoToken values) plus a raw YAML editor for advanced use.
-3. **Service Health**: Green/yellow/red status indicators for each container. Checks Lavalink `/v4/info`, yt-cipher health endpoint, bgutil-pot health.
+3. **Service Health**: Green/yellow/red status indicators for each container. Checks Lavalink `/v4/info`, yt-cipher health endpoint, bgutil-pot health. The same probes are also exposed as unauthenticated JSON at `/healthz` (aggregate, 200/503) and `/healthz/{lavalink,cipher,pot}` (per-service) for external monitors like CloudWatch / Uptime Kuma. Lavalink is the only critical service that flips the aggregate to 503; cipher and pot are advisory because Lavalink can still serve non-YouTube sources without them.
 4. **Restart Control**: Trigger Lavalink container restart after config changes. Uses Docker socket.
 
 **P1 — Token Lifecycle**:
