@@ -97,16 +97,21 @@ services:
       - no-new-privileges:true
     ports:
       - "127.0.0.1:2375:2375"
-    environment:
-      - CONTAINERS=1
-      - POST=1
-      # docker-py's from_env() uses version='auto', which negotiates the API
-      # version via GET /version on first call. PING lets the admin do its
-      # own liveness check against the proxy.
-      - PING=1
-      - VERSION=1
+    # The image's default config is driven by env vars (CONTAINERS=1, POST=1,
+    # etc.) but those are granular at the *resource* level — POST=1 on
+    # /containers/* would also pass POST /containers/create, which is enough
+    # to escape to host root via a privileged bind-mounted container.
+    # We override haproxy.cfg with explicit endpoint-level allow rules
+    # instead. See config/dockerproxy/haproxy.cfg for the full list.
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      # The image's entrypoint runs sed on haproxy.cfg.template and writes
+      # haproxy.cfg, so we replace the *template*. Our config has no
+      # ${BIND_CONFIG} placeholder, so sed is a no-op and our content passes
+      # through unchanged. Mounting over haproxy.cfg directly fails because
+      # that path doesn't exist in the image — Docker would create it as a
+      # directory.
+      - ./config/dockerproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg.template:ro
     healthcheck:
       test: [ "CMD-SHELL", "wget -qO- http://127.0.0.1:2375/_ping || exit 1" ]
       interval: 30s

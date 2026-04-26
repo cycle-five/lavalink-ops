@@ -94,30 +94,33 @@ each service needs to talk to.
 
 - Replaces the historical "mount the docker socket directly" pattern. The
   admin panel never sees the real socket.
-- Configured with `CONTAINERS=1`, `POST=1`, `PING=1`, `VERSION=1`. The admin
-  panel relies on `containers.list`, `containers.get`, `containers.restart`,
-  `containers.logs`, and the `GET /_ping` / `GET /version` calls the Docker
-  Python SDK uses to negotiate API version on startup.
 - Admin reaches it via `DOCKER_HOST=tcp://127.0.0.1:2375`.
+- We override the image's default env-var-driven config with a custom
+  `haproxy.cfg` (in `config/dockerproxy/`) that allowlists exactly the
+  endpoint + method combinations the admin panel uses:
 
-**Threat-model honesty.** This is defense-in-depth, not isolation. The
-allowlist blocks `EXEC`, `IMAGES`, `VOLUMES`, `NETWORKS`, `SWARM`, `INFO`,
-`SYSTEM`, container `DELETE`, and the rest of the Docker API. But
-`CONTAINERS=1` + `POST=1` is granular at the *resource* level, not the
-endpoint level — so it allows every POST under `/containers/*`, including
-`containers.create` and `containers.start`. A motivated attacker with admin
-RCE could create a privileged container with `Privileged: true` and a
-bind-mount of `/`, start it, and escape to host root that way. The proxy
-substantially reduces blast radius compared to mounting `/var/run/docker.sock`
-directly into the admin container, but it does not make admin compromise
-non-equivalent to host compromise.
+  | Method | Path | Used by |
+  |--------|------|---------|
+  | `GET` | `/_ping` | proxy healthcheck, admin liveness |
+  | `GET` | `/version` (and `/vX.Y/version`) | docker-py `from_env()` API negotiation |
+  | `GET` | `/containers/{name}/json` | `containers.get` (inspect by name) |
+  | `GET` | `/containers/{id}/logs` | log viewer + log watcher |
+  | `POST` | `/containers/{id}/restart` | config-change + PoToken refresh |
 
-To get truly minimal Docker access, the next step would be replacing the
-proxy with a custom restart-only sidecar that exposes a single
-`POST /restart/<container>` endpoint and proxies *that* (and only that) to
-`/var/run/docker.sock` internally. Out of scope for now — the rate-limited
-HMAC login and the non-root, capability-dropped, read-only-root admin
-container are the primary defense; the proxy is the second layer.
+  Everything else returns 403 — `containers.create`, `containers.start`,
+  `containers.kill`, `containers.exec`, `containers.prune`, the entire
+  images/volumes/networks/swarm/system surface, and so on.
+
+**Why endpoint-level instead of the env-var interface.** The image's default
+env vars (`CONTAINERS=1`, `POST=1`, etc.) are granular at the *resource*
+level. `CONTAINERS=1` + `POST=1` would also pass `POST /containers/create`,
+which is enough for an attacker with admin RCE to create a privileged
+container with a bind-mount of `/` and escape to host root. The custom
+HAProxy config is path-regex granular, so we can permit the one POST verb we
+actually need (`/restart`) without opening the rest of the `/containers/*`
+POST surface. The cost is that we own a small `haproxy.cfg` (versioned
+alongside the codebase); the benefit is that an admin-panel compromise stays
+genuinely contained.
 
 ### 2.5 Admin Panel
 
