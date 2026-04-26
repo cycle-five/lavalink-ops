@@ -73,7 +73,15 @@ class StateStore:
         directory = os.path.dirname(self.state_path)
         fd, tmp_path = tempfile.mkstemp(prefix=".state-", suffix=".tmp", dir=directory)
         try:
-            with os.fdopen(fd, "w", encoding="utf-8") as f:
+            # Wrap the raw fd in a file object as the very next step. If
+            # fdopen itself raises (extremely rare — e.g. memory pressure)
+            # the bare fd would otherwise leak.
+            try:
+                f = os.fdopen(fd, "w", encoding="utf-8")
+            except Exception:
+                os.close(fd)
+                raise
+            with f:
                 json.dump(state, f, indent=2)
                 f.flush()
                 os.fsync(f.fileno())

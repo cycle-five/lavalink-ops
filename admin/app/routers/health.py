@@ -30,9 +30,11 @@ async def health_page(request: Request, hx_request: str | None = Header(default=
     Render the health checks dashboard.
     If it's an HTMX request, return the partial component.
     """
-    lavalink_healthy = await lavalink.is_healthy()
-    cipher_healthy = await cipher.is_healthy()
-    pot_healthy = await pot.is_healthy()
+    lavalink_healthy, cipher_healthy, pot_healthy = await asyncio.gather(
+        lavalink.is_healthy(),
+        cipher.is_healthy(),
+        pot.is_healthy(),
+    )
 
     context = {
         "lavalink_healthy": lavalink_healthy,
