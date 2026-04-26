@@ -46,7 +46,14 @@ The admin panel manages the lifecycle of all three.
 
 ## Architecture
 
-See [DESIGN.md](DESIGN.md) for the full architecture document.
+See [docs/DESIGN.md](docs/DESIGN.md) for the full architecture document.
+
+## Cloud Deployment
+
+`terraform/` has ready-to-go modules for deploying the stack to a single
+cloud VM. AWS, UpCloud, and Vultr are supported. Each module provisions a
+hardened instance with IPv6 enabled (useful for Lavalink's IP rotation) and
+prints an SSH-tunnel command for reaching the admin panel.
 
 ## Health & Monitoring
 
