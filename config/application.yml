@@ -62,15 +62,19 @@ plugins:
       - IOS
       - ANDROID_VR
 
-    # Per-client option overrides. TV (= TVHTML5 internally) historically only
-    # ran the OAuth device flow, so its videoLoading/playback default to false
-    # in youtube-source 1.18 — meaning even with OAuth tokens it won't attempt
-    # to load videos unless we explicitly opt it in. That's exactly what we
-    # want for unlocking "This video requires login" cases.
-    TV:
-      playback: true
-      videoLoading: true
-      playlistLoading: true
+    # Per-client option overrides live under clientOptions, NOT directly under
+    # `youtube:` — the latter is silently ignored. See youtube-source README,
+    # "Advanced Options" section.
+    #
+    # TV is the only OAuth-compatible client in 1.18, but its capabilities
+    # table shows Metadata Support: None — TV's role is the OAuth handshake
+    # and streaming audio bytes for tracks already loaded by a metadata-
+    # capable client. We explicitly enable playback so it'll be picked when
+    # another client (e.g. WEBEMBEDDED via the embed route for limited
+    # age-restricted content) successfully loads the metadata first.
+    clientOptions:
+      TV:
+        playback: true
 
     oauth:
       enabled: true
