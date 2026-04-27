@@ -51,13 +51,18 @@ async def refresh_and_inject() -> None:
     3. Update application.yml via yaml_manager
     4. Restart Lavalink container via docker_ctl
     5. Log the event to state.json
+
+    Re-raises on failure after recording the event to state, so callers
+    (route handlers, the APScheduler job) see the real error instead of a
+    silent "success" while state.json shows otherwise.
     """
     state = get_state()
     settings = get_settings()
-    
+
     # Store history of rotations
     history = state.get("pot_history", [])
-    
+    error: Exception | None = None
+
     try:
         logger.info("Starting PoToken refresh cycle")
         # 1. Generate token
@@ -97,10 +102,14 @@ async def refresh_and_inject() -> None:
             "status": "error",
             "message": f"{type(e).__name__}: {e}"
         }
-    
+        error = e
+
     # Update history in state (keep last 10)
     history.append(record)
     history = history[-10:]
     state.set("pot_history", history)
     state.set("pot_last_refresh", record["timestamp"])
+
+    if error is not None:
+        raise error
 

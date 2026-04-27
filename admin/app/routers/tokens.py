@@ -7,7 +7,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from app.dependencies import get_settings, get_state
-from app.services import yaml_manager, pot
+from app.services import yaml_manager, pot, oauth
 
 router = APIRouter()
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -58,10 +58,32 @@ def _mask(value: Optional[str]) -> str:
 async def manual_pot_refresh(request: Request):
     """Trigger a manual PoToken refresh."""
     try:
-        # Long running background task so we don't timeout the request, but we want 
-        # to show success. Let's run it inline but potentially it takes 15s.
+        # Inline rather than background — the call takes ~15s and we want
+        # the user's success/error feedback to reflect what actually
+        # happened, not just "we kicked it off".
         await pot.refresh_and_inject()
         return templates.TemplateResponse(request=request, name="partials/save_success.html", context={"message": "PoToken refreshed and Lavalink restarted!"})
     except Exception as e:
         return templates.TemplateResponse(request=request, name="partials/save_error.html", context={"error": f"Refresh failed: {e}"})
+
+
+@router.post("/tokens/rotate-oauth")
+async def manual_oauth_rotate(request: Request):
+    """Clear the OAuth refresh token and restart Lavalink so it prints a new
+    device code. Use when switching burner accounts or when the existing
+    refresh token has been invalidated by Google.
+    """
+    try:
+        await oauth.rotate()
+        return templates.TemplateResponse(
+            request=request,
+            name="partials/save_success.html",
+            context={"message": "OAuth cleared. Watch this page — a new device code should appear in ~30s."},
+        )
+    except Exception as e:
+        return templates.TemplateResponse(
+            request=request,
+            name="partials/save_error.html",
+            context={"error": f"OAuth rotation failed: {e}"},
+        )
 

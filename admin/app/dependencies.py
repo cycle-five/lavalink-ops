@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import tempfile
 from functools import lru_cache
 from typing import Any, Dict
 
@@ -61,10 +62,36 @@ class StateStore:
             return {}
 
     def write(self, state: Dict[str, Any]) -> None:
-        """Write the entire state dictionary."""
+        """Write the entire state dictionary atomically.
+
+        Tempfile + os.replace only needs write permission on the directory,
+        not the existing file — sidesteps stale ownership (e.g. a state.json
+        left over from when admin ran as root) and prevents partial writes
+        if the process is killed mid-flush.
+        """
         self._ensure_dir()
-        with open(self.state_path, "w", encoding="utf-8") as f:
-            json.dump(state, f, indent=2)
+        directory = os.path.dirname(self.state_path)
+        fd, tmp_path = tempfile.mkstemp(prefix=".state-", suffix=".tmp", dir=directory)
+        try:
+            # Wrap the raw fd in a file object as the very next step. If
+            # fdopen itself raises (extremely rare — e.g. memory pressure)
+            # the bare fd would otherwise leak.
+            try:
+                f = os.fdopen(fd, "w", encoding="utf-8")
+            except Exception:
+                os.close(fd)
+                raise
+            with f:
+                json.dump(state, f, indent=2)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp_path, self.state_path)
+        except Exception:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
 
     def get(self, key: str, default: Any = None) -> Any:
         state = self.read()

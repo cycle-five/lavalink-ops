@@ -1,6 +1,6 @@
 import pytest
 import httpx
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, MagicMock, AsyncMock, ANY
 
 from app.services.pot import generate_token, refresh_and_inject
 
@@ -57,12 +57,49 @@ async def test_refresh_and_inject(mock_read_config, mock_set_nested, mock_write,
 
     await refresh_and_inject()
 
-    
-    # Verify state logged the success
-    from unittest.mock import ANY
-    # Two set_nested calls (token + visitorData)
+
+    # Verify state logged the success — two set_nested calls (token + visitorData)
     assert mock_set_nested.call_count == 2
     mock_write.assert_called_once_with({}, "/fake/path.yml")
     mock_restart.assert_called_once_with("test-lavalink")
     state_mock.set.assert_any_call("pot_last_refresh", ANY)
     state_mock.set.assert_any_call("pot_history", ANY)
+
+
+@pytest.mark.asyncio
+@patch("app.services.pot.get_settings")
+@patch("app.services.pot.restart_container")
+@patch("app.services.pot.get_state")
+@patch("app.services.pot.write_config_to_disk")
+@patch("app.services.pot.set_nested")
+@patch("app.services.pot.read_config", new_callable=AsyncMock)
+async def test_refresh_and_inject_reraises_on_partial_response(
+    mock_read_config, mock_set_nested, mock_write, mock_get_state, mock_restart, mock_get_settings, mock_httpx_client
+):
+    """If bgutil returns an incomplete response, refresh_and_inject must
+    raise (so the caller's error handling fires) AND record the failure to
+    state. The earlier silent-success behavior masked real rotation
+    failures behind a fake green toast."""
+    mock_settings = MagicMock()
+    mock_settings.lavalink_container_name = "test-lavalink"
+    mock_settings.config_path = "/fake/path.yml"
+    mock_get_settings.return_value = mock_settings
+
+    state_mock = MagicMock()
+    state_mock.get.return_value = []
+    mock_get_state.return_value = state_mock
+
+    # bgutil returns poToken but no visitorData/contentBinding
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"poToken": "po123"}
+    mock_httpx_client.post.return_value = mock_resp
+
+    with pytest.raises(ValueError, match="incomplete response"):
+        await refresh_and_inject()
+
+    # Failure was still recorded to state for the history view.
+    state_mock.set.assert_any_call("pot_history", ANY)
+    state_mock.set.assert_any_call("pot_last_refresh", ANY)
+    # And we never wrote config or restarted Lavalink.
+    mock_write.assert_not_called()
+    mock_restart.assert_not_called()

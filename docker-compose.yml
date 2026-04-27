@@ -57,11 +57,10 @@ services:
       - "127.0.0.1:8001:8001"
     environment:
       - API_TOKEN=${CIPHER_API_TOKEN:-change-me-cipher-token}
-    healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://127.0.0.1:8001/ || exit 1" ]
-      interval: 60s
-      timeout: 10s
-      retries: 3
+    # No healthcheck: the upstream image is distroless (no shell, no wget,
+    # no curl), so any in-container probe would always fail to even execute.
+    # Liveness is exposed at the host via the admin panel's
+    # GET /healthz/cipher endpoint instead.
 
   # Called only by the admin panel via 127.0.0.1:4416. No auth on this service
   # upstream — keep it off public interfaces.
@@ -82,11 +81,9 @@ services:
     environment:
       - HOME=/tmp
     command: [ "server", "--host", "0.0.0.0", "--port", "4416" ]
-    healthcheck:
-      test: [ "CMD-SHELL", "wget -qO- http://127.0.0.1:4416/ping || exit 1" ]
-      interval: 60s
-      timeout: 15s
-      retries: 3
+    # No healthcheck: distroless Node image — no shell or wget for an
+    # in-container probe. Liveness is exposed at the host via the admin
+    # panel's GET /healthz/pot endpoint instead.
 
   # Scoped Docker API gateway — the admin only needs container list/inspect/logs/restart.
   # Exposing /var/run/docker.sock directly would let any admin-panel RCE own the host.
@@ -100,16 +97,21 @@ services:
       - no-new-privileges:true
     ports:
       - "127.0.0.1:2375:2375"
-    environment:
-      - CONTAINERS=1
-      - POST=1
-      # docker-py's from_env() uses version='auto', which negotiates the API
-      # version via GET /version on first call. PING lets the admin do its
-      # own liveness check against the proxy.
-      - PING=1
-      - VERSION=1
+    # The image's default config is driven by env vars (CONTAINERS=1, POST=1,
+    # etc.) but those are granular at the *resource* level — POST=1 on
+    # /containers/* would also pass POST /containers/create, which is enough
+    # to escape to host root via a privileged bind-mounted container.
+    # We override haproxy.cfg with explicit endpoint-level allow rules
+    # instead. See config/dockerproxy/haproxy.cfg for the full list.
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      # The image's entrypoint runs sed on haproxy.cfg.template and writes
+      # haproxy.cfg, so we replace the *template*. Our config has no
+      # ${BIND_CONFIG} placeholder, so sed is a no-op and our content passes
+      # through unchanged. Mounting over haproxy.cfg directly fails because
+      # that path doesn't exist in the image — Docker would create it as a
+      # directory.
+      - ./config/dockerproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg.template:ro
     healthcheck:
       test: [ "CMD-SHELL", "wget -qO- http://127.0.0.1:2375/_ping || exit 1" ]
       interval: 30s

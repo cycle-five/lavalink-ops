@@ -153,6 +153,11 @@ class BasicAuthMiddleware(BaseHTTPMiddleware):
         if request.url.path == "/login" or request.url.path == "/do-login":
             return await call_next(request)
 
+        # Allow JSON health probes for external monitors (CloudWatch, Uptime
+        # Kuma, etc). The HTML /health dashboard stays behind auth.
+        if request.url.path == "/healthz" or request.url.path.startswith("/healthz/"):
+            return await call_next(request)
+
         # Check authentication (HMAC-signed cookie)
         settings = get_settings()
         auth_cookie = request.cookies.get("admin_session")
