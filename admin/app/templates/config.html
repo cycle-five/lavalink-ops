@@ -77,7 +77,7 @@
                     
                     <div class="space-y-2 bg-gray-900 p-4 border border-gray-700 rounded-md">
                         <!-- Normally draggable/reorderable, using simple checkboxes for the prompt -->
-                        {% for c in ["MUSIC", "WEB", "WEBEMBEDDED", "TVHTML5EMBEDDED", "ANDROID", "ANDROID_VR", "IOS"] %}
+                        {% for c in ["MUSIC", "TV", "WEB", "WEBEMBEDDED", "MWEB", "ANDROID", "ANDROID_VR", "IOS"] %}
                         <div class="flex items-center">
                             <input type="checkbox" name="clients" value="{{ c }}" 
                                    {% if c in clients %}checked{% endif %}

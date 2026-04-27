@@ -28,7 +28,7 @@ async def config_page(request: Request):
     
     plugins = yaml_manager.get_nested(config_data, ["plugins", "youtube"]) or {}
     
-    clients = plugins.get("clients", ["MUSIC", "WEB", "WEBEMBEDDED", "TVHTML5EMBEDDED"])
+    clients = plugins.get("clients", ["MUSIC", "TV", "WEB", "WEBEMBEDDED", "ANDROID_VR"])
     
     oauth_enabled = yaml_manager.get_nested(plugins, ["oauth", "enabled"])
     oauth_refresh = yaml_manager.get_nested(plugins, ["oauth", "refreshToken"]) or ""

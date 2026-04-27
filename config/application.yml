@@ -47,10 +47,19 @@ plugins:
 
     # Client priority — queried in order. Adjust based on what's working.
     # See: https://github.com/lavalink-devs/youtube-source#available-clients
+    #
+    # TV is the OAuth-compatible client — it consumes the refresh token from
+    # the OAuth section below, which unlocks "This video requires login"
+    # cases (age-restricted, etc). Keep it high in the list when OAuth is on.
+    # WEBEMBEDDED handles age-restricted via the embed route as a fallback.
+    # MUSIC (resolves to WEB_REMIX internally) only handles music URLs and
+    # silently skips other videos — leave it for searches.
     clients:
       - MUSIC
+      - TV
       - WEB
-      - TVHTML5EMBEDDED
+      - WEBEMBEDDED
+      - IOS
       - ANDROID_VR
     oauth:
       enabled: true
