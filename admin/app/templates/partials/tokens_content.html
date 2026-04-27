@@ -65,11 +65,20 @@
             <h3 class="text-lg leading-6 font-medium text-white">OAuth Integration</h3>
             <p class="text-xs text-gray-400">Status of Google account bounds.</p>
         </div>
-        <span class="px-2 py-1 text-xs rounded-full font-medium 
-                     {{ 'bg-green-900 text-green-200 border border-green-700' if oauth_status == 'Active' else 
-                        ('bg-yellow-900 text-yellow-200 border border-yellow-700' if oauth_status == 'Needs Setup' else 'bg-gray-700 text-gray-300 border border-gray-600') }}">
-            {{ oauth_status }}
-        </span>
+        <div class="flex items-center space-x-3">
+            <span class="px-2 py-1 text-xs rounded-full font-medium
+                         {{ 'bg-green-900 text-green-200 border border-green-700' if oauth_status == 'Active' else
+                            ('bg-yellow-900 text-yellow-200 border border-yellow-700' if oauth_status == 'Needs Setup' else 'bg-gray-700 text-gray-300 border border-gray-600') }}">
+                {{ oauth_status }}
+            </span>
+            <form hx-post="/tokens/rotate-oauth"
+                  hx-target="#pot-status"
+                  hx-confirm="Clear the current OAuth refresh token and restart Lavalink? You'll need to enter a new device code at google.com/device.">
+                <button class="bg-gray-700 hover:bg-red-600 text-gray-200 hover:text-white text-xs font-medium py-1.5 px-3 rounded shadow-sm border border-gray-600 transition">
+                    Rotate OAuth
+                </button>
+            </form>
+        </div>
     </div>
 
     {% if oauth_device_code %}
