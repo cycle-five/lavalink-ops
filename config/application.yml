@@ -76,6 +76,11 @@ plugins:
       TV:
         playback: true
 
+      WEBEMBEDDED:
+        # These don't work in web embedded mode, so disable them to avoid confusion.
+        playlistLoading: false
+        searching: false
+
     oauth:
       enabled: true
       skipInitialization: false
@@ -127,6 +132,8 @@ logging:
   level:
     root: INFO
     lavalink: INFO
+    # Set to DEBUG to see detailed YouTube client selection and loading logs.
+    # dev.lavalink.youtube: DEBUG
     # Set to INFO to see OAuth device codes and token status
     dev.lavalink.youtube.http.YoutubeOauth2Handler: INFO
 
