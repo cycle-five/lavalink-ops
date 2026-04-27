@@ -61,6 +61,17 @@ plugins:
       - WEBEMBEDDED
       - IOS
       - ANDROID_VR
+
+    # Per-client option overrides. TV (= TVHTML5 internally) historically only
+    # ran the OAuth device flow, so its videoLoading/playback default to false
+    # in youtube-source 1.18 — meaning even with OAuth tokens it won't attempt
+    # to load videos unless we explicitly opt it in. That's exactly what we
+    # want for unlocking "This video requires login" cases.
+    TV:
+      playback: true
+      videoLoading: true
+      playlistLoading: true
+
     oauth:
       enabled: true
       skipInitialization: false
