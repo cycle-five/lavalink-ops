@@ -20,5 +20,12 @@ dependencies = [
 dev = [
   "pytest>=8.0",
   "pytest-asyncio>=0.24.0",
+  "pytest-cov>=5.0",
   "httpx",                  # for TestClient
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# pytest-asyncio: pin the fixture loop scope explicitly — leaving it unset
+# is deprecated and warns on every run.
+asyncio_default_fixture_loop_scope = "function"

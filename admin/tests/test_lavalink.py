@@ -2,7 +2,7 @@ import pytest
 import httpx
 from unittest.mock import patch, MagicMock
 
-from app.services.lavalink import get_info, get_stats, load_tracks
+from app.services.lavalink import get_info, load_tracks
 
 @pytest.fixture
 def mock_httpx_client():

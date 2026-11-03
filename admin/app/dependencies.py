@@ -49,7 +49,11 @@ class StateStore:
         self._ensure_dir()
 
     def _ensure_dir(self):
-        os.makedirs(os.path.dirname(self.state_path), exist_ok=True)
+        # dirname is "" for a bare filename like "state.json" — makedirs("")
+        # raises FileNotFoundError, and the current directory needs no making.
+        directory = os.path.dirname(self.state_path)
+        if directory:
+            os.makedirs(directory, exist_ok=True)
 
     def read(self) -> Dict[str, Any]:
         """Read the entire state dictionary."""
@@ -70,7 +74,7 @@ class StateStore:
         if the process is killed mid-flush.
         """
         self._ensure_dir()
-        directory = os.path.dirname(self.state_path)
+        directory = os.path.dirname(self.state_path) or "."
         fd, tmp_path = tempfile.mkstemp(prefix=".state-", suffix=".tmp", dir=directory)
         try:
             # Wrap the raw fd in a file object as the very next step. If
