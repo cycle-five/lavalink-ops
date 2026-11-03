@@ -1,5 +1,5 @@
 import os
-from fastapi import APIRouter, Request, Query, Header
+from fastapi import APIRouter, Request, Query
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 

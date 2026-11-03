@@ -1,10 +1,8 @@
 import os
-import shutil
 import pytest
 from unittest.mock import patch, MagicMock
-from ruamel.yaml import YAML
 
-from app.services.yaml_manager import read_config, write_config, update_config_field, get_config_field, validate_yaml_string
+from app.services.yaml_manager import read_config, update_config_field, get_config_field, validate_yaml_string
 
 DUMMY_YML = """
 # Lavalink Config

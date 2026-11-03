@@ -32,11 +32,20 @@ def write_config_to_disk(data: CommentedMap, config_path: str) -> None:
         backup_path = f"{config_path}.bak"
         shutil.copy2(config_path, backup_path)
 
-    # 2. Write to a temporary file first
+    # 2. Write to a temporary file first. If the dump itself fails (e.g. an
+    # unserializable value), remove the partial tmp file — previously it
+    # was left behind next to the config.
     tmp_path = f"{config_path}.tmp"
     yaml = _get_yaml_instance()
-    with open(tmp_path, "w", encoding="utf-8") as f:
-        yaml.dump(data, f)
+    try:
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            yaml.dump(data, f)
+    except Exception:
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+        raise
 
     # 3. Validate the written YAML structure
     try:

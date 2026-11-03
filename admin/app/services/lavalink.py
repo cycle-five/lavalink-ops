@@ -1,5 +1,3 @@
-import httpx
-
 from app.dependencies import get_settings, get_http_client
 
 

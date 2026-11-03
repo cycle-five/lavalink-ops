@@ -1,0 +1,50 @@
+name: CI
+
+# The admin panel's test suite existed for months with nothing running it —
+# and it couldn't even be collected in a clean environment (Settings is
+# built at import time and needs env that only conftest.py now supplies).
+# This workflow is the tripwire that keeps both of those from regressing.
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  admin-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: admin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: admin/pyproject.toml
+      - name: Install admin panel + dev deps
+        run: pip install -e '.[dev]'
+      - name: Lint for unused imports / undefined names
+        run: |
+          pip install pyflakes
+          python -m pyflakes app tests
+      - name: Run tests with coverage
+        run: python -m pytest --cov=app --cov-report=term
+
+  compose-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate docker-compose.yml renders
+        # No .env in CI: every interpolated variable must have a safe
+        # default in the compose file itself.
+        run: docker compose config -q
+
+  terraform-fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - name: terraform fmt -check
+        run: terraform fmt -check -recursive terraform/

@@ -1,4 +1,3 @@
-import logging
 from datetime import datetime
 from typing import Generator
 
@@ -59,7 +58,10 @@ def stream_logs(name: str) -> Generator[str, None, None]:
         log_stream = container.logs(stream=True, tail=100, follow=True)
         for chunk in log_stream:
             yield chunk.decode('utf-8', errors='replace')
-    except docker.errors.NotFound:
+    except ValueError:
+        # get_container() already translates docker.errors.NotFound into
+        # ValueError, so the old `except docker.errors.NotFound` branch here
+        # was dead — a missing container fell through to "Stream interrupted".
         yield f"Container {name} not found.\n"
     except Exception as e:
         yield f"Stream interrupted: {e}\n"
