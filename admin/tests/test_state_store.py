@@ -98,6 +98,20 @@ def test_get_http_client_raises_when_uninitialized(monkeypatch):
         get_http_client()
 
 
-def test_get_settings_and_get_state_are_cached():
-    assert dependencies.get_settings() is dependencies.get_settings()
-    assert dependencies.get_state() is dependencies.get_state()
+def test_get_settings_and_get_state_are_cached(tmp_path, monkeypatch):
+    # Hermetic version: the real get_state() builds a StateStore at the
+    # production default /state/state.json, whose _ensure_dir() makedirs
+    # /state — silently fine as root, PermissionError for anyone else
+    # (this test failed the suite's first CI run for exactly that reason).
+    # Point get_settings at a tmp state path and clear the lru_cache
+    # around the check so no /state-backed store leaks into other tests.
+    from app.config import Settings
+
+    settings = Settings(state_path=str(tmp_path / "state.json"))
+    monkeypatch.setattr(dependencies, "get_settings", lambda: settings)
+    dependencies.get_state.cache_clear()
+    try:
+        assert dependencies.get_settings() is dependencies.get_settings()
+        assert dependencies.get_state() is dependencies.get_state()
+    finally:
+        dependencies.get_state.cache_clear()
