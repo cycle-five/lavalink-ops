@@ -19,7 +19,11 @@ services:
              echo 'Data directories ready'"
 
   lavalink:
-    image: ghcr.io/lavalink-devs/lavalink:4
+    # Pinned (was the floating `:4` tag): 4.2.x is the DAVE (Discord E2EE
+    # voice) series — voice state gained a required `channelId`, so the
+    # *client* (bot) library must support DAVE before this line moves.
+    # A floating major tag would cross that break silently on a rebuild.
+    image: ghcr.io/lavalink-devs/lavalink:4.2.2
     container_name: ${LAVALINK_CONTAINER_NAME:-lavalink}
     restart: unless-stopped
     network_mode: "host"
@@ -57,6 +61,12 @@ services:
       - "127.0.0.1:8001:8001"
     environment:
       - API_TOKEN=${CIPHER_API_TOKEN:-change-me-cipher-token}
+      # Upstream: only the IAS player-script variants consistently work.
+      # The env var the code actually reads is OVERRIDE_PLAYER_VARIANT
+      # (src/player.ts) — the yt-cipher README prose says
+      # OVERRIDE_SCRIPT_VARIANT, which the code never reads. Verified
+      # against upstream source 2026-11-02.
+      - OVERRIDE_PLAYER_VARIANT=IAS
     # No healthcheck: the upstream image is distroless (no shell, no wget,
     # no curl), so any in-container probe would always fail to even execute.
     # Liveness is exposed at the host via the admin panel's
