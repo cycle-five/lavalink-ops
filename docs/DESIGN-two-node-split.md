@@ -1,6 +1,8 @@
 # Two-Node Split — Resolver / Streamer Design
 
-Status: **design proposal**, 2026-11-03. Not yet implemented.
+Status: **design proposal**, 2026-11-03. Implementation in progress:
+Phase 0 merged (PR #14), Phase 1 in PR (streamer config + compose +
+contract tests); Phases 2–3 not started.
 Basis: a full source trace of youtube-source **1.18.2** (the version pinned
 in `config/application.yml`), summarised in §2. Companion to
 `docs/AUDIT-2026-11.md` §"State of the art".
@@ -173,6 +175,16 @@ implementation beside the lavalink and native backends:
   on the resolver, which is the point.
 - Queue state stays bot-side, as today; nodes remain interchangeable
   workers.
+- **LavaSrc caveat:** LavaSrc performs its mirror search when a track
+  *plays*, not when it loads — so handing the streamer a raw
+  Spotify/LavaSrc encoded track would make the streamer search (with
+  search disabled and TV unable to load, it fails cleanly, but it
+  fails). The split backend must instead hand over the *already
+  mirrored* YouTube track: when a resolver load returns a mirroring
+  source's track, resolve its mirror on the resolver (the track info
+  carries title/artist/ISRC — enough for the same `ytsearch:` providers
+  LavaSrc itself would use) and pass that encoded track to the
+  streamer.
 
 CrackTunes integration, when it happens, inherits this design rather
 than the single-node one.

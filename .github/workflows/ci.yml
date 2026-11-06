@@ -40,6 +40,8 @@ jobs:
         # No .env in CI: every interpolated variable must have a safe
         # default in the compose file itself.
         run: docker compose config -q
+      - name: Validate docker-compose.streamer.yml renders
+        run: docker compose -f docker-compose.streamer.yml config -q
 
   terraform-fmt:
     runs-on: ubuntu-latest
