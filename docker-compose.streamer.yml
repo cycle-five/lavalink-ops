@@ -1,0 +1,154 @@
+# Streamer node — Phase 1 of docs/DESIGN-two-node-split.md.
+#
+# A second, playback-only Lavalink node: TV client + OAuth only, no
+# PoToken machinery (no bgutil-pot service — D2), no search. It plays
+# encoded tracks resolved by the resolver / all-in-one node. Until
+# Phase 3 it idles as a spare; the bot still points at the all-in-one
+# stack in docker-compose.yml.
+#
+# Target deployment is a separate host (its own clean datacenter IP).
+# Everything is offset so it can also co-exist with the main stack on
+# one host during migration: ports 2334 (Lavalink), 8081 (admin),
+# 2376 (dockerproxy), data under ./data-streamer, config under
+# ./config/streamer. One exception: yt-cipher publishes 127.0.0.1:8001
+# in both stacks, because config/streamer/application.yml points
+# remoteCipher at 8001 — on a shared host, don't start this file's
+# yt-cipher (the main stack's is identical); on a dedicated host, do.
+#
+# Usage: docker compose -f docker-compose.streamer.yml up -d
+services:
+  # Init container — same pattern as the main stack, streamer paths.
+  # UID 322 = Lavalink container's built-in user.
+  # UID 1001 = admin container's appuser (see admin/Dockerfile).
+  init:
+    image: busybox:1.36.1
+    container_name: lavalink-streamer-init
+    restart: "no"
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - ./data-streamer:/data
+      - ./config/streamer:/config
+    command: >
+      sh -c "mkdir -p /data/lavalink/plugins /data/lavalink/logs /data/admin &&
+             chown -R 322:322 /data/lavalink &&
+             chown -R 1001:1001 /data/admin /config &&
+             echo 'Streamer data directories ready'"
+
+  lavalink:
+    # Same pin as the main stack — encoded tracks are only portable
+    # between nodes running the same source versions (D3).
+    image: ghcr.io/lavalink-devs/lavalink:4.2.2
+    container_name: ${STREAMER_CONTAINER_NAME:-lavalink-streamer}
+    restart: unless-stopped
+    network_mode: "host"
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      - _JAVA_OPTIONS=${STREAMER_JAVA_OPTS:--Xmx512M}
+      - SERVER_PORT=${STREAMER_PORT:-2334}
+      - LAVALINK_SERVER_PASSWORD=${LAVALINK_PASSWORD:-youshallnotpass}
+    volumes:
+      - ./config/streamer/application.yml:/opt/Lavalink/application.yml:ro
+      - ./data-streamer/lavalink/plugins:/opt/Lavalink/plugins
+      - ./data-streamer/lavalink/logs:/opt/Lavalink/logs
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- --header=\"Authorization: $${LAVALINK_SERVER_PASSWORD:-youshallnotpass}\" http://localhost:$${SERVER_PORT:-2334}/version || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    depends_on:
+      init:
+        condition: service_completed_successfully
+      yt-cipher:
+        condition: service_started
+
+  # Same cipher as the main stack (the streamer makes player requests
+  # at playback time). See the header note about the shared 8001 port.
+  yt-cipher:
+    image: ghcr.io/kikkia/yt-cipher:master
+    container_name: yt-cipher-streamer
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "127.0.0.1:8001:8001"
+    environment:
+      - API_TOKEN=${CIPHER_API_TOKEN:-change-me-cipher-token}
+      # Same verified-upstream note as the main stack: the code reads
+      # OVERRIDE_PLAYER_VARIANT, not the README's OVERRIDE_SCRIPT_VARIANT.
+      - OVERRIDE_PLAYER_VARIANT=IAS
+
+  # Scoped Docker API gateway for the streamer admin (same hardened
+  # allowlist config as the main stack), published on 2376 so both
+  # stacks can co-exist on one host.
+  dockerproxy:
+    image: tecnativa/docker-socket-proxy:0.3.0
+    container_name: lavalink-streamer-dockerproxy
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "127.0.0.1:2376:2375"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./config/dockerproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg.template:ro
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO- http://127.0.0.1:2376/_ping || exit 1" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # The streamer's own admin panel. Its job here is the OAuth device
+  # flow (writes the refresh token into the streamer config) and node
+  # health — PoT rotation is disabled (POT_REFRESH_ENABLED=false):
+  # there is no bgutil-pot on this node, by design (D2).
+  admin:
+    build:
+      context: ./admin
+      dockerfile: Dockerfile
+      network: host
+    container_name: lavalink-streamer-admin
+    restart: unless-stopped
+    network_mode: "host"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-change-me-admin}
+      - ADMIN_SECRET_KEY=${ADMIN_SECRET_KEY:-change-me-session-secret}
+      - ADMIN_PORT=${STREAMER_ADMIN_PORT:-8081}
+      - ADMIN_BIND_HOST=${ADMIN_BIND_HOST:-127.0.0.1}
+      - ADMIN_COOKIE_SECURE=${ADMIN_COOKIE_SECURE:-false}
+      - ADMIN_TRUST_PROXY=${ADMIN_TRUST_PROXY:-false}
+      - ADMIN_TRUSTED_PROXY_IPS=${ADMIN_TRUSTED_PROXY_IPS:-127.0.0.1}
+      - LAVALINK_HOST=127.0.0.1
+      - LAVALINK_PORT=${STREAMER_PORT:-2334}
+      - LAVALINK_PASSWORD=${LAVALINK_PASSWORD:-youshallnotpass}
+      - CIPHER_HOST=127.0.0.1
+      - CIPHER_PORT=8001
+      - BGUTIL_HOST=127.0.0.1
+      - BGUTIL_PORT=4416
+      - POT_REFRESH_ENABLED=false
+      - LAVALINK_CONTAINER_NAME=${STREAMER_CONTAINER_NAME:-lavalink-streamer}
+      - CONFIG_PATH=/config/application.yml
+      - STATE_PATH=/state/state.json
+      - DOCKER_HOST=tcp://127.0.0.1:2376
+    volumes:
+      - ./config/streamer:/config
+      - ./data-streamer/admin:/state
+    depends_on:
+      init:
+        condition: service_completed_successfully
+      dockerproxy:
+        condition: service_healthy
+      lavalink:
+        condition: service_started
+      yt-cipher:
+        condition: service_started

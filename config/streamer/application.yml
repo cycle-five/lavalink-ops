@@ -1,0 +1,160 @@
+# ─────────────────────────────────────────────────────────────────────────
+# STREAMER node config — Phase 1 of docs/DESIGN-two-node-split.md.
+#
+# Derived from config/application.yml (the all-in-one / resolver config).
+# The deltas are the design, everything else is intentionally identical;
+# admin/tests/test_streamer_config.py enforces plugin-version parity and
+# the invariants below so the two files can't silently drift apart.
+#
+#   D1  OAuth lives ONLY here. This node holds the account credential.
+#   D2  No PoToken: the `pot:` block is omitted entirely (the plugin's
+#       loader is null-safe for it in 1.18.2). PoT is resolver-only kit.
+#   D4  Client list is TV only. If TV can't play a track, the node fails
+#       the track instead of falling through to WEB/IOS/VR — un-authed,
+#       browse-shaped requests never leave this clean datacenter IP.
+#
+# The node plays encoded tracks resolved elsewhere; it never searches
+# (allowSearch: false) and runs no route planner (rotation is the
+# resolver's job). Port is set by SERVER_PORT in
+# docker-compose.streamer.yml (default 2334) so it can co-exist with the
+# all-in-one node during migration.
+# ─────────────────────────────────────────────────────────────────────────
+server:
+  port: 2333
+  address: 0.0.0.0
+  http2:
+    enabled: false
+
+lavalink:
+  plugins:
+    - dependency: "dev.lavalink.youtube:youtube-plugin:1.18.2"
+      repository: "https://maven.lavalink.dev/releases"
+    - dependency: "com.github.topi314.lavasrc:lavasrc-plugin:4.8.3"
+      repository: "https://maven.lavalink.dev/releases"
+  server:
+    password: "youshallnotpass"
+    sources:
+      youtube: false  # Disabled — using youtube-plugin instead
+      bandcamp: true
+      soundcloud: true
+      twitch: true
+      vimeo: true
+      http: true
+      local: false
+    filters:
+      volume: true
+      equalizer: true
+      karaoke: true
+      timescale: true
+      tremolo: true
+      vibrato: true
+      distortion: true
+      rotation: true
+      channelMix: true
+      lowPass: true
+    bufferDurationMs: 400
+    youtubePlaylistLoadLimit: 6
+    playerUpdateInterval: 5
+    youtubeSearchEnabled: true
+    soundcloudSearchEnabled: true
+    gc-warnings: true
+
+plugins:
+  youtube:
+    enabled: true
+    # Streamer never searches (D-principle: no browse-shaped traffic from
+    # the clean IP). Resolution happens on the resolver node; this node
+    # only plays encoded tracks handed to it by the bot.
+    allowSearch: false
+    allowDirectVideoIds: true
+    allowDirectPlaylistIds: true
+
+    # D4: TV only. TV is the sole OAuth-compatible client in 1.18.2 and
+    # playback-only (its canHandleRequest is false — it loads no
+    # metadata), which is exactly the streamer's job: one authed player
+    # call per track, then the stream. There is deliberately no fallback
+    # client; see the file header.
+    clients:
+      - TV
+
+    clientOptions:
+      TV:
+        playback: true
+
+    # D1: the account credential exists only on this node. The streamer
+    # stack's own admin panel (docker-compose.streamer.yml) runs the
+    # device-code flow and writes the refresh token here.
+    oauth:
+      enabled: true
+      skipInitialization: false
+      refreshToken: ""
+
+    # No `pot:` block — D2. PoToken is resolver-only; WEB/WEBEMBEDDED
+    # (the only clients that read it) are not configured here.
+
+    # Remote cipher server — offloads signature deciphering to yt-cipher.
+    # The streamer makes player requests at playback time, so it needs
+    # the cipher just like the resolver does. Uses 127.0.0.1 because all
+    # services run on host networking.
+    remoteCipher:
+      url: "http://127.0.0.1:8001"
+      password: "change-me-cipher-token"
+      userAgent: "lavalink-ops"
+  # LavaSrc is a plugin that mirrors tracks from other sources (like Spotify) to YouTube.
+  # The plugin stays loaded here so LavaSrc-encoded tracks still decode.
+  # Caveat (Phase 3 concern, docs/DESIGN-two-node-split.md §4): LavaSrc
+  # performs its mirror search when a track *plays*, so a Spotify track
+  # handed straight to this node would try to search from the clean IP —
+  # with allowSearch off and TV unable to load, it fails cleanly instead.
+  # The split MusicBackend must hand the streamer the already-mirrored
+  # YouTube track resolved on the resolver node.
+  lavasrc:
+    # Provider chain — controls where mirrored tracks get resolved.
+    # Tried in order; %ISRC% is skipped if track lacks one.
+    providers:
+      - "ytsearch:\"%ISRC%\""   # try ISRC match on YouTube first
+      - "ytsearch:%QUERY%"      # fallback to text search
+      # If you set up Deezer, you can prioritize it:
+      # - "dzisrc:%ISRC%"
+      # - "dzsearch:%QUERY%"
+
+    sources:
+      spotify: true
+      applemusic: false   # enable if you get an API token
+      deezer: false        # enable if you have an ARL cookie
+      yandexmusic: false
+      flowerytts: false
+      vkmusic: false
+
+    spotify:
+      clientId: ""
+      clientSecret: ""
+      countryCode: "US"
+      playlistLoadLimit: 6    # pages × 100 tracks each
+      albumLoadLimit: 6       # pages × 50 tracks each
+      # spDc: "your-sp-dc-cookie"  # optional, for lyrics/recommendations
+
+logging:
+  file:
+    path: ./logs/
+  level:
+    root: INFO
+    lavalink: INFO
+    # Set to DEBUG to see detailed YouTube client selection and loading logs.
+    # dev.lavalink.youtube: DEBUG
+    # Set to INFO to see OAuth device codes and token status
+    dev.lavalink.youtube.http.YoutubeOauth2Handler: INFO
+
+  logback:
+    rollingpolicy:
+      max-file-size: 50MB
+      max-history: 7
+
+metrics:
+  prometheus:
+    enabled: false
+    endpoint: /metrics
+
+  # No routePlanner here — IP rotation is the resolver node's mechanism
+  # (docs/DESIGN-two-node-split.md §3). The streamer keeps one stable
+  # datacenter IP on purpose.
