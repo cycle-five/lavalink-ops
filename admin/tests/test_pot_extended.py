@@ -1,6 +1,7 @@
 """Extensions to ``test_pot.py``: token-mapping precedence, HTTP errors,
 history truncation/appending, and the failure-recording contract of
-``refresh_and_inject`` (record error to state, re-raise, no write/restart).
+``refresh_and_inject`` (record error to state, re-raise; on failure before
+the live push completes, no seed write either).
 """
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -22,6 +23,8 @@ def _client_returning(json_data):
 def _settings():
     s = MagicMock()
     s.bgutil_url = "http://fake-bgutil:4416"
+    s.lavalink_url = "http://fake-lavalink:2333"
+    s.lavalink_password = "fake-password"
     s.lavalink_container_name = "test-lavalink"
     s.config_path = "/fake/path.yml"
     return s
@@ -72,7 +75,6 @@ def _refresh_harness(existing_history):
             "app.services.pot.read_config", new_callable=AsyncMock, return_value={}
         ),
         "write": patch("app.services.pot.write_config_to_disk"),
-        "restart": patch("app.services.pot.restart_container"),
     }
     for p in patches.values():
         p.start()
@@ -102,7 +104,7 @@ async def test_refresh_history_truncated_to_10():
 
 
 @pytest.mark.asyncio
-async def test_refresh_generate_failure_records_error_and_reraises_without_write_or_restart():
+async def test_refresh_generate_failure_records_error_and_reraises_without_write():
     state = MagicMock()
     state.get.return_value = []
     client = MagicMock(spec=httpx.AsyncClient)
@@ -111,30 +113,35 @@ async def test_refresh_generate_failure_records_error_and_reraises_without_write
          patch("app.services.pot.get_state", return_value=state), \
          patch("app.services.pot.get_http_client", return_value=client), \
          patch("app.services.pot.read_config", new_callable=AsyncMock, return_value={}), \
-         patch("app.services.pot.write_config_to_disk") as mock_write, \
-         patch("app.services.pot.restart_container") as mock_restart:
+         patch("app.services.pot.write_config_to_disk") as mock_write:
         with pytest.raises(httpx.ConnectError):
             await refresh_and_inject()
     history_calls = [c for c in state.set.call_args_list if c.args[0] == "pot_history"]
     assert history_calls[0].args[1][-1]["status"] == "error"
     mock_write.assert_not_called()
-    mock_restart.assert_not_called()
 
 
 @pytest.mark.asyncio
-async def test_refresh_restart_failure_records_error_and_reraises():
+async def test_refresh_live_push_failure_records_error_and_reraises():
+    """Phase 0 ordering: the live push happens *before* the seed write, so
+    a rejected push leaves the on-disk seed matching the token Lavalink is
+    actually still running with."""
     state = MagicMock()
     state.get.return_value = []
-    client = _client_returning({"poToken": "po123", "visitorData": "vd123"})
+    token_resp = MagicMock()
+    token_resp.json.return_value = {"poToken": "po123", "visitorData": "vd123"}
+    push_resp = MagicMock()
+    push_resp.raise_for_status.side_effect = RuntimeError("lavalink rejected")
+    client = MagicMock(spec=httpx.AsyncClient)
+    client.post = AsyncMock(side_effect=[token_resp, push_resp])
     with patch("app.services.pot.get_settings", return_value=_settings()), \
          patch("app.services.pot.get_state", return_value=state), \
          patch("app.services.pot.get_http_client", return_value=client), \
          patch("app.services.pot.read_config", new_callable=AsyncMock, return_value={}), \
-         patch("app.services.pot.write_config_to_disk") as mock_write, \
-         patch("app.services.pot.restart_container", side_effect=RuntimeError("docker down")):
-        with pytest.raises(RuntimeError, match="docker down"):
+         patch("app.services.pot.write_config_to_disk") as mock_write:
+        with pytest.raises(RuntimeError, match="lavalink rejected"):
             await refresh_and_inject()
-    # Config *was* written before the restart attempt; the error is recorded.
-    mock_write.assert_called_once()
+    # Push failed before the seed write; the error is recorded.
+    mock_write.assert_not_called()
     history_calls = [c for c in state.set.call_args_list if c.args[0] == "pot_history"]
     assert history_calls[0].args[1][-1]["status"] == "error"
