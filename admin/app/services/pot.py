@@ -3,7 +3,6 @@ from datetime import datetime
 
 from app.dependencies import get_settings, get_http_client, get_state, get_config_lock
 from app.services.yaml_manager import read_config, set_nested, write_config_to_disk
-from app.services.docker_ctl import restart_container
 
 logger = logging.getLogger(__name__)
 
@@ -43,18 +42,51 @@ async def generate_token() -> dict:
     }
 
 
+async def push_token_live(po_token: str, visitor_data: str) -> None:
+    """
+    Push a fresh PoToken + visitorData pair into the running Lavalink via
+    the youtube plugin's live update route (POST /youtube, implemented by
+    YoutubeRestHandler in youtube-plugin 1.18.x). Players survive — no
+    container restart.
+
+    `refreshToken: "x"` is the route's own sentinel for "leave the OAuth
+    refresh token untouched"; without it the call would also try to
+    rotate OAuth. Auth is Lavalink's password header, same as the
+    /v4/* calls in app.services.lavalink.
+    """
+    client = get_http_client()
+    settings = get_settings()
+
+    url = f"{settings.lavalink_url}/youtube"
+    res = await client.post(
+        url,
+        headers={"Authorization": settings.lavalink_password},
+        json={
+            "poToken": po_token,
+            "visitorData": visitor_data,
+            "refreshToken": "x",
+        },
+        timeout=10.0,
+    )
+    res.raise_for_status()
+
+
 async def refresh_and_inject() -> None:
     """
-    Full lifecycle:
+    Full lifecycle (Phase 0 of docs/DESIGN-two-node-split.md — restart-free
+    refresh on the current single node):
     1. Generate token
-    2. Acquire config lock
-    3. Update application.yml via yaml_manager
-    4. Restart Lavalink container via docker_ctl
+    2. Push it live via POST /youtube (no Lavalink restart, players survive)
+    3. Acquire config lock
+    4. Update application.yml via yaml_manager — seed only, so the next
+       cold start boots with the freshest token before the first refresh
     5. Log the event to state.json
 
     Re-raises on failure after recording the event to state, so callers
     (route handlers, the APScheduler job) see the real error instead of a
-    silent "success" while state.json shows otherwise.
+    silent "success" while state.json shows otherwise. If the live push
+    fails, the yaml seed is left untouched and the error propagates —
+    the previously live token keeps serving.
     """
     state = get_state()
     settings = get_settings()
@@ -75,7 +107,11 @@ async def refresh_and_inject() -> None:
             # partial tokens we don't want landing in logs.
             raise ValueError("bgutil returned an incomplete response (missing poToken or visitorData)")
 
-        # 2 & 3. Lock + Update both fields atomically
+        # 2. Push live — no restart, active players survive.
+        logger.info("Pushing new PoToken to Lavalink via POST /youtube (no restart)")
+        await push_token_live(po_token, visitor_data)
+
+        # 3 & 4. Lock + update both seed fields atomically
         lock = get_config_lock()
         async with lock:
             config_data = await read_config()
@@ -83,16 +119,11 @@ async def refresh_and_inject() -> None:
             set_nested(config_data, ["plugins", "youtube", "pot", "visitorData"], visitor_data)
             write_config_to_disk(config_data, settings.config_path)
 
-        # 4. Restart container
-        logger.info("Restarting Lavalink to apply new PoToken")
-        from asyncio import to_thread
-        await to_thread(restart_container, settings.lavalink_container_name)
-
         # 5. Log success
         record = {
             "timestamp": datetime.now().isoformat(),
             "status": "success",
-            "message": "Rotated successfully"
+            "message": "Rotated successfully (live, no restart)"
         }
 
     except Exception as e:

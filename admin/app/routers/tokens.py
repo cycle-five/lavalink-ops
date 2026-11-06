@@ -61,7 +61,7 @@ async def manual_pot_refresh(request: Request):
         # the user's success/error feedback to reflect what actually
         # happened, not just "we kicked it off".
         await pot.refresh_and_inject()
-        return templates.TemplateResponse(request=request, name="partials/save_success.html", context={"message": "PoToken refreshed and Lavalink restarted!"})
+        return templates.TemplateResponse(request=request, name="partials/save_success.html", context={"message": "PoToken refreshed live — no restart, players kept playing!"})
     except Exception as e:
         return templates.TemplateResponse(request=request, name="partials/save_error.html", context={"error": f"Refresh failed: {e}"})
 
